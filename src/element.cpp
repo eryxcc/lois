@@ -230,7 +230,7 @@ void aggressive_simplify(varlist& selvar, rbool& selphi, elem& a, contextptr& ai
 
 
 void ESet::insert(elem a, contextptr ain, contextptr nowenv) {
-  
+
   // cout << "insert: " << a << " env=" << currentcontext << " setenv="<<ain << endl;
   
   varlist selvar;
@@ -277,7 +277,7 @@ rset newSet(std::initializer_list<elem> l) {
   rset S = newSet(); for(elem it: l) S->insert(it, currentcontext); return S;
   }
 
-rsetof<term> Domain::getSet() {
+lsetof<term> Domain::getSet() {
   auto x = newvar(this);
   std::shared_ptr<ESet> D = std::make_shared<ESet> ();
   D->elts.resize(1);
@@ -285,8 +285,8 @@ rsetof<term> Domain::getSet() {
   e.phi = ftrue;
   e.a = x;
   e.var.push_back(x);
-  rset reps = rset(D);
-  return rsetof<term> (reps);
+  lset reps = rset(D);
+  return lsetof<term> (reps);
   }
 
 rset emptyset;

@@ -93,7 +93,7 @@ int numstruct = 0;
 
 // build the strindex table 
 
-void analyzeStructure(vector<term>& v, RelTree& tree, rset A, size_t a=0, size_t b=0) {
+void analyzeStructure(vector<term>& v, RelTree& tree, const lset& A, size_t a=0, size_t b=0) {
 
   if(b>a) a=a+1, b=0;
   
@@ -128,7 +128,7 @@ void analyzeStructure(vector<term>& v, RelTree& tree, rset A, size_t a=0, size_t
 
   }
 
-int countStructures(vector<term>& v, RelTree& tree, rset A, rbool phi, int expected) {
+int countStructures(vector<term>& v, RelTree& tree, const lset& A, rbool phi, int expected) {
   numstruct = 0;
   If(phi) analyzeStructure(v, tree, A);
   if(numstruct == expected)
@@ -141,11 +141,11 @@ int countStructures(vector<term>& v, RelTree& tree, rset A, rbool phi, int expec
   return numstruct;
   }
 
-void testTree(rset A) {
+void testTree(const lset& A) {
   
   RelTree tree(sym.arrow, sym.notarrow, sym.min);
   
-  rsetof<term> At(A);
+  lsetof<term> At(A);
 
   for(term x: At) for(term y: At) for(term z: At) for(term w: At) {
     x.asVar()->name = "X";
@@ -347,10 +347,10 @@ void testFullyPseudoparallel(rset A) {
   for(elem a: A) X += a;
   for(elem a: A) for(elem b: A) If(a != b) X += elpair(a,b);
   X += 42;
-  cout << X << endl;
-  cout << getsingletonset(X) << endl;
+  cout << "X is: " << X << endl;
+  cout << "singleton set is: " << getsingletonset(X) << endl;
   
-  for(relem e: fullypseudoparallel(X)) {
+  for(lelem e: fullypseudoparallel(X)) {
     cout << "e = " << e << endl;
     }
   }

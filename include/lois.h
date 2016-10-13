@@ -108,10 +108,14 @@ extern symbols sym;
 struct Formula;
 struct term;
 struct elem;
-struct rset;
+struct lset;
+typedef lset rset;
 struct Subdomain;
 struct rbool;
 struct Element;
+struct ESet;
+
+template<class T> struct lsetof;
 
 typedef std::shared_ptr<struct Variable> vptr; 
 typedef std::shared_ptr<struct SubRelation> subrelptr;
@@ -157,15 +161,13 @@ rbool makeq(bool t, rbool r, const varlist& va);
 
 // -- domains & relations --
 
-template<class T> struct rsetof;
-
 struct Domain {
   // name of the domain, to be displayed when printing contexts
   std::string name;
   // private
   int curcheck;
-  // get the domain as a rsetof<term>
-  struct rsetof<term> getSet();
+  // get the domain as a lsetof<term>
+  struct lsetof<term> getSet();
 
   Domain(std::string s) : name(s), curcheck(-1) {}
   };
@@ -359,7 +361,7 @@ inline std::ostream& operator << (std::ostream& os, contextptr e) {
 rbool outenv(rbool phi = ftrue, bool universal = false, contextptr anccontext = emptycontext, contextptr nowcontext = currentcontext);
 
 // the set of extensions of anccontext-valuation to nowcontext
-rset branchset(contextptr anccontext = emptycontext, contextptr nowcontext = currentcontext);
+lset branchset(contextptr anccontext = emptycontext, contextptr nowcontext = currentcontext);
 
 // does the given object use the new variables from 'nowcontext' to 'anccontext'
 template<class T> bool usesenv(const T& obj, contextptr anccontext = emptycontext, contextptr nowcontext = currentcontext) {
@@ -804,21 +806,13 @@ struct elem {
   elem(std::shared_ptr<struct Element> e) : p(e) {}
   elem() {}
   Element* operator -> () const { return &(*p); }
-  elem(rset s);
+  elem(const lset& s);
   elem(std::shared_ptr<struct ESet> s);
   elem(int);
   elem(vptr);
   elem(term);
   elem(elpair);
   elem(eltuple);
-  };
-
-struct rset {
-  std::shared_ptr<struct ESet> p;
-  rset(std::shared_ptr<struct ESet> e) : p(e) {}
-  rset() {}
-  ESet* operator -> () const { return &(*p); }
-  explicit rset(elem e) : p(std::dynamic_pointer_cast<ESet>(e.p)) { if(!p) throw as_exception(); }
   };
 
 extern const elem nullelem;
@@ -947,12 +941,7 @@ struct ESet : Element {
     }
   };
 
-inline elem::elem(rset s) : p(s.p) {}
 inline elem::elem(std::shared_ptr<struct ESet> s) : p(s) {}
-
-inline rbool operator == (rset x, rset y) { return (*x.p) == (*y.p); }
-inline rbool operator != (rset x, rset y) { return (*x.p) != (*y.p); }
-inline bool isused(vptr v, rset e) { return e->uses(v); }
 
 // iterator for ESet (very technical)
 
@@ -982,24 +971,22 @@ struct EIterator {
 EIterator begin(elem a);
 EIterator end(elem a);
 
-inline std::ostream& operator << (std::ostream& os, rset a) { return a->display(os); }
-
 // create a set with the given contents
-inline rset newSet() { return std::make_shared<ESet> (); }
+inline std::shared_ptr<ESet> newInternalSet() { return std::make_shared<ESet> (); }
 
-rset newSet(elem x);
-rset newSet(elem x, elem y);
-rset newSet(std::initializer_list<elem> l);
+lset newSet(elem x);
+lset newSet(elem x, elem y);
+lset newSet(std::initializer_list<elem> l);
 
 inline bool isused(vptr v, const term& a) { return a.p->uses(v); }
 
 inline elem alpha(elem x, vptr v1, vptr v2) { return x.p->alph(v1, v2); }
 
-extern rset emptyset;
+extern lset emptyset;
 
 bool isSet(elem a);
 
-rset asSet(elem a);
+lset asSet(elem a);
 
 // setof
 
@@ -1019,38 +1006,113 @@ template<class T> struct EIteratorOf {
   bool operator != (const EIteratorOf<T> & x) { return it != x.it; }
   };
 
-template<class T> struct rsetof {
-  rset orig;
-  
-  rsetof() { }
-  rsetof(rset r) : orig(r) {}
+// negation structure: 
+// a technical construct required to enable writing the set difference as (A&&~B)
+//-------------------------------------------------------------------------------
 
-  EIteratorOf<T> begin() { return EIteratorOf<T> (orig->begin()); }
-  EIteratorOf<T> end() { return EIteratorOf<T> (orig->end()); }
-  rbool isEmpty() { return orig == emptyset; }
-
-  rbool operator < (const rsetof<T>& x) { return orig < x.orig; }
-  rbool operator <= (const rsetof<T>& x) { return orig <= x.orig; }
-  
-  operator rset () { return orig; }
+template<class T> struct negated {
+  T original;
+  negated(T t) { original = t; }
   };
 
-template<class T> std::ostream& operator << (std::ostream& os, rsetof<T> A) {
-  A.orig->display(os); return os;
+template<class T> T operator ~ (negated<T> A) { return A.original; }
+
+// set/setof lvalues
+//-------------------
+
+struct lset {
+  std::shared_ptr<struct ESet> p;
+  contextptr ain; // environment at the time of definition
+  
+  ESet* operator -> () const { return &(*p); }
+  
+  lset() { p = newInternalSet(); ain = currentcontext; }
+  lset(std::shared_ptr<struct ESet> e) : ain(currentcontext), p(e) {}
+  explicit lset(elem e) : ain(currentcontext), p(std::dynamic_pointer_cast<ESet>(e.p)) { if(!p) throw as_exception(); }
+
+  lset removeall();
+  lset removeallnonset();
+
+  lset& operator += (elem y) { p->insert(y, ain); return *this; }
+  lset& operator |= (const lset& y) { for(elem e: y) p->insert(e, ain); return *this; }
+  lset& operator -= (elem y);
+  lset& operator &= (const lset& y);
+  lset& operator &= (negated<lset> y);
+
+  struct EIterator begin() const { return p->begin(); }
+  virtual struct EIterator end() const { return p->end(); }
+
+  template<class T>
+  lset(const lsetof<T>& o) { ain = currentcontext; p = newInternalSet(); (*this) |= o.orig; }
+
+  lset& operator = (const lset& rval) {
+    if(ain == rval.ain && ain == currentcontext) { p = rval.p; return *this; }
+    if(usesenv(rval, ain)) throw assignment_exception();
+    removeall(); (*this) |= rval;
+    return *this;
+    }
+
+  lset(const lset &x) : ain(currentcontext) {
+    p = newInternalSet();
+    (*this) |= x;
+    }
+
+  lset(lset &&x) : ain(currentcontext) {
+    if(x.ain == currentcontext) {
+      printf("quick move used\n");
+      p = x.p;
+      }
+    else {
+      p = newInternalSet();
+      (*this) |= x;
+      }
+    }
+  };
+
+inline elem::elem(const lset& s) : p(s.p) {}
+inline rbool operator == (const lset& x, const lset& y) { return (*x.p) == (*y.p); }
+inline rbool operator != (const lset& x, const lset& y) { return (*x.p) != (*y.p); }
+inline bool isused(vptr v, const lset& e) { return e->uses(v); }
+inline lset newSet() { return lset(); }
+
+inline negated<rset> operator ~ (const lset& A) { return negated<rset>(A); }
+template<class T>
+  negated<lsetof<T>> operator ~ (const lsetof<T>& A) { return negated<lsetof<T>> (A); }
+
+inline std::ostream& operator << (std::ostream& os, const lset& a) { return a->display(os); }
+
+template<class T> struct lsetof {
+  lset orig;
+  
+  lsetof() { }
+  lsetof(const lsetof<T>& r) : orig(r.orig) {}
+  lsetof(const lset& r) : orig(r) {}
+
+  lsetof<T> removeall() { return lsetof<T> (orig.removeall()); }
+
+  lsetof<T>& operator += (T y) { orig += elof<T>(y); return *this; }
+  lsetof<T>& operator |= (const lsetof<T>& x) { orig |= x.orig; return (*this); }
+
+  EIteratorOf<T> begin() const { return EIteratorOf<T> (orig.begin()); }
+  EIteratorOf<T> end() const { return EIteratorOf<T> (orig.end()); }
+  rbool isEmpty() { return orig == emptyset; }
+  
+  operator lset () const { return orig; }
+  };
+
+template<class T> std::ostream& operator << (std::ostream& os, const lsetof<T>& A) {
+  A.orig.p->display(os); return os;
   }
 
-template<class T> rsetof<T> alpha(rsetof<T> A, vptr v1, vptr v2) {
-  return rsetof<T> (rset(A.orig->alph(v1, v2)));
+template<class T> lsetof<T> alpha(lsetof<T> A, vptr v1, vptr v2) {
+  return lsetof<T> (A.orig.alph(v1, v2));
   }
 
-template<class T> bool isused(vptr v, rsetof<T> A) { return A.orig->uses(v); }
+template<class T> bool isused(vptr v, lsetof<T> A) { return A.orig->uses(v); }
 
-template<class T> rsetof<T> newSetOf() { return rsetof<T> (newSet()); }
-template<class T> rsetof<T> newSetOf(T x) { return rsetof<T> (newSet(elof<T> (x))); }
-template<class T> rsetof<T> newSetOf(T x, T y) { return rsetof<T> (newSet(elof<T> (x), elof<T> (y))); }
-
-template<class T> rbool operator == (rsetof<T> x, rsetof<T> y) { return x.orig == y.orig; }
-template<class T> rbool operator != (rsetof<T> x, rsetof<T> y) { return x.orig != y.orig; }
+template<class T> lsetof<T> newSetOf() { return lsetof<T> (newSet()); }
+template<class T> lsetof<T> newSetOf(T x) { return lsetof<T> (newSet(elof<T> (x))); }
+template<class T> lsetof<T> newSetOf(T x, T y) { return lsetof<T> (newSet(elof<T> (x), elof<T> (y))); }
 
 // initialize everything
 

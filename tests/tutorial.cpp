@@ -40,7 +40,7 @@ rset supremum(rset X, rset domain) {
 
 FUNCTION("reachability")
 rset reach 
-  (rsetof<elpair> E, 
+  (lsetof<elpair> E, 
      rset S) {
   lset R = S;
   lset P;
@@ -228,7 +228,7 @@ SECTION("j2")
   }
  
 // SECTION{"petri"}
-//   bool coverable(rset P, rset V, relem I, relem F)
+//   bool coverable(rset P, rset V, lelem I, lelem F)
 //     //test coverability of a target vector F from an initial vector I
 //       //in a Petri net P -- a finite set of vectors in Z^k
 //     //V is the space N^k
@@ -418,11 +418,11 @@ rbool ismemberof(elem a, rset B) {
 
 FUNCTION("card")
 
-  rsetof<int> card(rset X) {
+  lsetof<int> card(rset X) {
     lsetof<int> answer;
     for(elem a: X) 
       If (answer.isEmpty()) {
-        rsetof<int> butone = card(X &~ newSet(a));
+        lsetof<int> butone = card(X &~ newSet(a));
         for(int x: butone) answer += (x+1);
         }
     If (answer.isEmpty()) answer += 0;
@@ -439,7 +439,7 @@ FUNCTION("max")
 
 FUNCTION("maxbad")
 
-  relem maxBad(rset X) {
+  lelem maxBad(rset X) {
     lelem ans;
     for(elem x: X) 
       If (ans.isUndefined() || x > ans)

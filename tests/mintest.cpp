@@ -55,7 +55,7 @@ inline lset& operator += (lset& x, const rset y) {
   return x += elem(y);
   } */
 
-void minimalize1(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
+void minimalize1(rset Q, rset F, lsetof<eltuple> delta, rset alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
@@ -104,7 +104,7 @@ void minimalize1(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
   cout << "classes: " << classes << endl;  
   }
 
-void minimalize2(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
+void minimalize2(rset Q, rset F, lsetof<eltuple> delta, rset alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
@@ -223,11 +223,11 @@ int main() {
   for(elem x: A) delta += eltuple({elof(2), x, elof(3)});
   for(elem x: A) delta += eltuple({elof(3), x, elof(0)}); */
 
-  // minimalize1(Q, F, delta, alph);
+  minimalize1(Q, F, delta, alph);
   showTimeElapsed();
 
-  // minimalize2(Q, F, delta, alph);
-  // showTimeElapsed();
+  minimalize2(Q, F, delta, alph);
+  showTimeElapsed();
 
   return 0;
   }

@@ -1,4 +1,10 @@
 2016/10/13: 
-  Removed the rvalue/lvalue types (rset/lset, relem/lelem etc.) Only lvalue types
-  are used from now.
+  Small fixes.
+  
+2016/10/14:
+  Removed the rvalue types (rset, relem, rnum, rsetof). Their only purpose was
+  to signify the lack of internal context in case of rvariables, but using them
+  leads to much less elegant code in general.
 
+  Added the test program 'learning nominal automata' (tests/learning.cpp).
+  

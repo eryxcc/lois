@@ -67,11 +67,11 @@ rset lset::removeall() {
   rset xyes  = std::make_shared<ESet> ();
   rbool phi = outenv(true, false, ain);
 
-  swap(xyes->elts, orig->elts);
+  swap(xyes->elts, p->elts);
 
   pushcontext pc(ain);
   for(elem a: xyes) Ife(!phi) {
-    orig->insert(a, ain);
+    p->insert(a, ain);
     }
 
   return xyes;
@@ -107,9 +107,9 @@ elem removeallnonset(elem x) {
 
 lset& lset::operator -= (elem y) {
   rset x1 = removeall();
-  orig->insert(y, ain);
+  p->insert(y, ain);
   rset y1 = removeall();
-  for(elem e: x1) If(!memberof(e, y1)) orig->insert(e, ain);
+  for(elem e: x1) If(!memberof(e, y1)) p->insert(e, ain);
   return (*this);
   }
 
@@ -117,11 +117,11 @@ lset& lset::operator &= (negated<rset> y) {
   rset x1 = removeall();
   (*this) |= y.original;
   rset y1 = removeall();
-  for(elem e: x1) If(!memberof(e, y1)) orig->insert(e, ain);
+  for(elem e: x1) If(!memberof(e, y1)) p->insert(e, ain);
   return (*this);
   }
 
-lset& lset::operator &= (rset y) {
+lset& lset::operator &= (const lset& y) {
   // does not work that easily:
   // for(elem e: removeall(x)) If(e != y) x += e;
   rset x1 = removeall();
@@ -145,12 +145,12 @@ rset optimize(rset x) {
   }
 
 // optimize the elements of given type
-rset optimizeType(rset x, rset type) {
+lset optimizeType(const lset& x, const lset& type) {
   return (type & x) | (x &~ type);
   }
 
 // the Cartesian product
-rset operator * (rset x, rset y) {
+lset operator * (const lset& x, const lset& y) {
   lset xy;
   for(elem e: x) for(elem f: y) xy += elpair(e,f);
   return xy;
@@ -168,7 +168,7 @@ template<class T> void cartesianRange(T beg, T end, eltuple& v, lset& cart) {
     }
   }
 
-rset cartesian(std::initializer_list<elem> l, eltuple v) {
+lset cartesian(std::initializer_list<elem> l, eltuple v) {
   lset cart;
   cartesianRange(l.begin(), l.end(), v, cart);
   return cart;
@@ -185,7 +185,7 @@ declareatom::declareatom(Domain *d, const std::string& s) {
     throw unsatisfiable_exception();
   }
 
-lset& operator += (lset& A, const relem& x) {
+lset& operator += (lset& A, const lelem& x) {
   for(elem e: newSet(x)) A += e;
   return A;
   }
@@ -239,7 +239,7 @@ RelUnary *singletonRelation;
 
 std::string singletonRelationName = "SR";
 
-rset getsingletonset(rset X) {
+rset getsingletonset(const lset& X) {
 
   if(!singletonDomain) {
     singletonDomain = new Domain("S");
@@ -247,7 +247,8 @@ rset getsingletonset(rset X) {
     }
     
   rset Result = newSet();
-  rset Y = newSet();
+  elem elY = newSet();
+  std::shared_ptr<ESet> Y = std::dynamic_pointer_cast<ESet> (elY.p);
   std::vector<vptr> v;
   vptr v0 = newvar(singletonDomain);
   
@@ -255,7 +256,7 @@ rset getsingletonset(rset X) {
   
   int id = 0;
   for(elem x: X) {
-    // std::cout << "x = " << x << std::endl;
+    std::cout << "x = " << x << std::endl;
     
     std::vector<vptr> vx;
     contextptr e = currentcontext;
@@ -268,10 +269,10 @@ rset getsingletonset(rset X) {
     while(e != eorig) {
       if(!e) throw env_exception();
       for(auto w: e->var) {
-        // std::cout << "add var " << w << std::endl;
+        std::cout << "add var " << w << std::endl;
         vx.push_back(w);
         }
-      // std::cout << "add phi " << e->phi << std::endl;
+      std::cout << "add phi " << e->phi << std::endl;
       phi = phi && e->phi;
       e = e->parent;
       }
@@ -285,18 +286,20 @@ rset getsingletonset(rset X) {
           w = v[i]; used[i] = true; goto found;
           }
       w = newvar(wx->dom);
-      // std::cout << "add v-var " << w << std::endl;
+      std::cout << "add v-var " << w << std::endl;
       v.push_back(w); used.push_back(true);
       found:
-      // std::cout << "translate " << wx << " to " << w << std::endl;
+      std::cout << "translate " << wx << " to " << w << std::endl;
       x = alpha(x, wx, w);
       phi = phi->alph(wx, w);
       }
     
     Y->elts.push_back(SimpleSet(varlist(), phi, x));
     }
+
   // std::cout << "Y is " << Y << std::endl;
-  SimpleSet s(varlist(), true, Y);
+  SimpleSet s(varlist(), true, elY);
+  std::cout << "s loaded" << std::endl;
   s.var.push_back(v0);
   for(vptr w: v) s.var.push_back(w);
   Result->elts.push_back(std::move(s));

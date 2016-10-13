@@ -19,7 +19,7 @@ rset branchset(contextptr anccontext, contextptr nowcontext) {
   return X;
   }
 
-rnum<int> cardinality(rset X) {
+lnum<int> cardinality(const lset& X) {
   lnum<int> answer;
   for(auto a: X) If(answer.isUndefined()) {
     auto butone = cardinality(X &~ newSet(a));
@@ -30,15 +30,15 @@ rnum<int> cardinality(rset X) {
   }
 
 // evaluate a relation (given as a graph) on x
-relem eval(rset f, elem x) {
+lelem eval(const lset& f, elem x) {
   lset ret;
-  for(elpair p: rsetof<elpair> (f))
+  for(elpair p: lsetof<elpair> (f))
     If(x == p.first) ret += p.second;
   return extract(ret);
   }
 
 // is the given function injective over X?
-rbool isInjective(rset f, rset X) {
+rbool isInjective(const lset& f, const lset& X) {
   lbool ret(ftrue);
   for (auto x:X) for(auto y:X) If(x!=y) {
     ret &= (eval(f,x) != eval(f,y));

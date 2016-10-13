@@ -1,0 +1,61 @@
+SECTION main
+SECTION domain
+A = \left\{a|a{\in}\mathbb{A}\right\}
+SECTION resetX
+X = \left\{b|b{\in}\mathbb{A};\ 5\right\}
+SECTION pairs
+Pairs = \left\{(c,d)|d{\in}\mathbb{A},\ c{\in}\mathbb{A}\right\}
+SECTION linear
+Transitive
+SECTION more
+SECTION newset
+X = {\emptyset}
+SECTION const
+X = \left\{1;\ 2;\ 3\right\}
+SECTION loop
+Y = \left\{(1,2);\ (1,3);\ (2,1);\ (2,3);\ (3,1);\ (3,2)\right\}
+SECTION control
+C=\left\{\left\{\left\{e\right\}|e{\in}\mathbb{A},\ f {\neq} e\right\}|f{\in}\mathbb{A}\right\}
+SECTION to_many_Zs
+SECTION whypiecewise
+SECTION to_many_Zs_end
+SECTION semantics1
+SECTION tech1
+SECTION semantics2
+SECTION tech2
+SECTION assignmentex
+SECTION simpleloop
+SECTION j1
+SECTION setup
+X=\left\{[g, g, h]|h{\in}\mathbb{A},\ g{\in}\mathbb{A}\right\}
+C=|g {\neq} i|i{\in}\mathbb{A}|g{\in}\mathbb{A}|
+SECTION simpleloop2
+equal
+SECTION test_equal
+equal
+SECTION j2
+SECTION treetest
+total order
+SECTION count
+1
+SECTION set2
+SECTION set3x
+\left\{\left\{j|j{\in}\mathbb{A},\ j {\neq} k {\wedge} j {\neq} l\right\}|l{\in}\mathbb{A},\ k{\in}\mathbb{A},\ k {\neq} l\right\}
+SECTION set3
+Intvs = \left\{\left\{m|m{\in}\mathbb{A},\ m > n {\wedge} o > m\right\}|o{\in}\mathbb{A},\ n{\in}\mathbb{A},\ o > n\right\}
+SECTION sup_test
+Yes
+SECTION graph
+\left\{((p,q),(q,r))|r{\in}\mathbb{A},\ q{\in}\mathbb{A},\ p{\in}\mathbb{A},\ r {\neq} p\right\}
+SECTION declareatom
+SECTION test_reach
+Reached
+SECTION displaycontext
+|b > a|b{\in}\mathbb{A}|a{\in}\mathbb{A}|
+SECTION lnumtest
+{\pseudo}\left\{2|b {\neq} a;\ 1|{\exists}w{\in}\mathbb{A} {\forall}x{\in}\mathbb{A} x.set(w {\vee} (x {\neq} a {\wedge} x {\neq} b)\right\}
+SECTION quantifiers
+{\forall}y{\in}\mathbb{A} {\exists}z{\in}\mathbb{A} y > z
+SECTION mapfilter
+\left\{\left\{aa|aa{\in}\mathbb{A},\ ab > aa\right\}|ab{\in}\mathbb{A}\right\}
+SECTION finish

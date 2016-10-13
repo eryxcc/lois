@@ -12,3 +12,20 @@ state systems.
 
 See [http://www.mimuw.edu.pl/~erykk/lois/](the official homepage of LOIS) for more
 information.
+
+# Subdirectories
+
+The subdirectory `includes` contains the headers of the LOIS library.
+
+The subdirectory `src` contains sources of the LOIS library itself.
+
+The subdirectory `obj` contains generated object files.
+
+The subdirectory `tests` contains programs using LOIS -- this includes the tutorial
+from the technical documentation, automatic testing program (`autotest`),
+a program comparing solvers (`soltest`), and some applications (e.g. `learning`).
+
+The subdirectory `out` contains output from the executables.
+
+The subdirectory `bin` contains generated binaries (both liblois.a and test executables).
+
