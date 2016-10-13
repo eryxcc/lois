@@ -128,8 +128,8 @@ template<class T> struct lsetof {
   lsetof<T>& operator += (T y) { orig += elof<T>(y); return *this; }
   lsetof<T>& operator |= (rsetof<T> x) { orig |= x.orig; return (*this); }
 
-  EIteratorOf<T> begin() { return EIteratorOf<T> (orig.begin()); }
-  EIteratorOf<T> end() { return EIteratorOf<T> (orig.end()); }
+  EIteratorOf<T> begin() const { return EIteratorOf<T> (orig.begin()); }
+  EIteratorOf<T> end() const { return EIteratorOf<T> (orig.end()); }
   rbool isEmpty() { return orig == emptyset; }
   
   operator rsetof<T> () const { return rsetof<T> (rset(orig)); }
@@ -307,6 +307,10 @@ struct lelem {
     return *this;
     }
   };
+
+lbool memberof(const lelem& x, const lset& A) {
+  return subseteq(x.singleton, A);
+  }
 
 lset& operator += (lset& A, const relem& x);
 

@@ -1,0 +1,4 @@
+2016/10/13: 
+  Removed the rvalue/lvalue types (rset/lset, relem/lelem etc.) Only lvalue types
+  are used from now.
+
