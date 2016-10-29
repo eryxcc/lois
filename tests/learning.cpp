@@ -1,6 +1,6 @@
 // Learning nominal automata (INCOMPLETE!)
 // Based on the paper by Joshua Moerman, Matteo Sammartino, Alexandra Silva, 
-// Bartek Klin, Micha³ Szynwelski
+// Bartek Klin, Micha Szynwelski
 
 // See https://arxiv.org/pdf/1607.06268.pdf
 
@@ -94,7 +94,7 @@ struct automaton {
   lelem I;
   };
 
-rset sigma;
+lset sigma;
 
 lbool wordinlanguage_aux(word w, const automaton& a, int pos, lelem state) {
   if(pos == w.size()) return memberof(state, a.F);
@@ -153,18 +153,35 @@ word concat(word x, elem b, word z) {
 lbool operator ^ (lbool x, lbool y) {
   return (x&&!y) || (y&&!x);
   }
+
+void printAutomaton(const automaton& L) {
+  std::cout << "Q = " << L.Q << std::endl;
+  std::cout << "I = " << L.I << std::endl;
+  std::cout << "F = " << L.F << std::endl;
+  std::cout << "Î´ = " << L.delta << std::endl;
+  }
   
-void learning(automaton L) {
+void learning(const automaton& L) {
+
+  std::cout << "Automaton to learn:" << std::endl;
+  printAutomaton(L);
+  std::cout << std::endl;
+
   lsetof<word> S, E;
   S += word();
   E += word();
   
-  // make it closed
   again: ;
   
   lbool changed = true;
 
   While(changed) {
+
+    std::cout << "Observation table:" << std::endl;
+    std::cout << "S = " << S << std::endl;
+    std::cout << "E = " << E << std::endl;
+    std::cout << std::endl;  
+
     changed = false;
 
     for(auto s: S) for(auto a: sigma) {
@@ -176,7 +193,12 @@ void learning(automaton L) {
             ok = false;
         ok2 |= ok;
         }
-      If(!ok2) { S += concat((s),a); changed = true; }
+      If(!ok2) {  
+        std::cout << 
+          "Not closed. Adding to S: " << concat(s,a) << " for " << emptycontext
+          << std::endl << std::endl;
+        S += concat((s),a); changed = true; 
+        }
       }
     
     for(auto s: S) for(auto t: S) {
@@ -186,6 +208,9 @@ void learning(automaton L) {
       If(ok) for(auto a: sigma) for(auto e: E)
         If(wordinlanguage(concat((s),a,(e)), L) ^ wordinlanguage(concat((t),a,(e)), L))
           If(!memberof(concat(a,e), E)) {
+            std::cout << 
+              "Not consistent. Adding to E: " << concat(a,e) << " for " << emptycontext
+              << std::endl << std::endl;
             E += concat(a,e);
             changed = true;
             }
@@ -193,8 +218,76 @@ void learning(automaton L) {
     
     }
   
-  std::cout << "S = " << S << std::endl;
-  std::cout << "E = " << E << std::endl;
+  automaton Learned;
+
+  for(auto s: S) {
+    lset state;
+    for(auto e: E) 
+      If(wordinlanguage(concat(s,e), L))
+        state += e;
+      
+    If(!memberof(state, Learned.Q)) {
+      Learned.Q += state;
+      If(s == word()) Learned.I = state;
+      If(wordinlanguage(s, L))
+        Learned.F += state;
+
+      for(auto a: sigma) {
+        lset q2;
+        for(auto e: E) If(wordinlanguage(concat(s,a,e), L))
+          q2 += e;
+        Learned.delta += transition(state, a, q2);
+        }
+      }
+    }
+  
+  std::cout << "Guessed automaton:" << std::endl;
+  printAutomaton(Learned);
+  std::cout << std::endl;
+  
+  lsetof<elpair> compare;
+  lsetof<elpair> samples;
+
+  // todo in LOIS : newSet for <lelem, lelem>
+  for(elem e: newSet(L.I)) for(elem e2: newSet(Learned.I)) {
+    auto initpair = elpair(e, e2);
+    compare += initpair;
+    samples += elpair(initpair, word());
+    }
+  
+  for(auto p: compare) {
+    
+    for(auto samp: samples) If(samp.first == p) {
+
+      word w = as<word> (samp.second);
+      
+      lbool m1 = memberof(p.first, L.F);
+      lbool m2 = memberof(p.second, Learned.F);
+  
+      If((m1 && !m2) || (m2 && !m1)) {
+        std::cout << "Counterexample: " << w << " where " << emptycontext << std::endl << std::endl;
+        while(true) {
+          If(!memberof(w, S)) S += w;
+          if(w.size() == 0) goto again;
+          w.resize(w.size() - 1);
+          }
+        }
+      
+      for(auto a: sigma)
+        for(transition& t1: L.delta) 
+          If(t1.src == p.first && t1.symbol == a) 
+        for(transition& t2: Learned.delta) 
+          If(t2.src == p.second && t2.symbol == a) {
+            elpair p2 = elpair(t1.tgt, t2.tgt);
+            If(!memberof(p2, compare)) {
+              compare += p2;
+              samples += make_pair(p2, concat(as<word> (samp.second), a));
+              }
+            }
+      }
+    }
+
+  std::cout << "Learning successful!" << std::endl;
   }
   
 int main() {
@@ -233,7 +326,7 @@ int main() {
     If(wordinlanguage(w, target)) allwords += w;
     }
 
-  std::cout << allwords << std::endl;
+  std::cout << "All words of length 2: " << allwords << std::endl;
   
   learning(target);
   
