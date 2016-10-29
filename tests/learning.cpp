@@ -327,6 +327,8 @@ int main() {
   for(auto a:A) target.delta += transition(e2, a, e2);
 */
 
+  // language L2 from the paper (repeated two letters: 'baba')
+
   elem eini = 0;   // initial
   elem etrash = 1; // trash
   elem eaccept = 2; // accept
@@ -339,8 +341,6 @@ int main() {
   target.F += eaccept;
   target.I = eini;
   
-  // language L2 from the paper (repeated two letters: 'baba')
-
   for(auto a: A) target.delta += transition(eini, a, a);
   for(auto a: A) for(auto b: A)
     target.delta += transition(a, b, elpair(a,b));
