@@ -308,6 +308,10 @@ int main() {
   sym.neq = "≠";
   
   dfa target;
+  
+  // language L1 from the paper (repeated letter)
+  
+/*
   elem e0 = 0;
   elem e1 = 1;
   elem e2 = 2;
@@ -316,12 +320,41 @@ int main() {
   target.Q += e2;
   for(auto a:A) target.Q += a;
   target.F += e1;
-  // for(auto a: A) target.F += a;
   target.I = e0;
   for(auto a:A) target.delta += transition(e0, a, a);
   for(auto a:A) target.delta += transition(a, a, e1);
   for(auto a:A) for(auto b: A) If(a != b) target.delta += transition(a, b, e2);
   for(auto a:A) target.delta += transition(e2, a, e2);
+*/
+
+  elem eini = 0;   // initial
+  elem etrash = 1; // trash
+  elem eaccept = 2; // accept
+  target.Q += eini;
+  target.Q += etrash;
+  target.Q += eaccept;
+  for(auto a: A) target.Q += a; // read one letter
+  for(auto a: A) for(auto b: A) target.Q += elpair(a,b); // read two letters
+  for(auto a: A) target.Q += elpair(a,eini); // read three letters, wait for 'a'
+  target.F += eaccept;
+  target.I = eini;
+  
+  // language L2 from the paper (repeated two letters: 'baba')
+
+  for(auto a: A) target.delta += transition(eini, a, a);
+  for(auto a: A) for(auto b: A)
+    target.delta += transition(a, b, elpair(a,b));
+  for(auto a: A) for(auto b: A)
+    target.delta += transition(elpair(a,b), a, elpair(b,eini));
+  for(auto a: A) for(auto b: A) for(auto c: A) If(a != c)
+    target.delta += transition(elpair(a,b), c, etrash);
+  for(auto a: A) 
+    target.delta += transition(elpair(a,eini), a, eaccept);
+  for(auto a: A) for(auto b: A) If(a != b)
+    target.delta += transition(elpair(a,eini), b, etrash);
+  for(auto a: A) target.delta += transition(etrash, a, etrash);
+  for(auto a: A) target.delta += transition(eaccept, a, etrash);
+  
   
   lset allwords;
   
@@ -333,6 +366,19 @@ int main() {
     }
 
   std::cout << "All words of length 2: " << allwords << std::endl << std::endl;
+  
+  allwords = newSet();
+  
+  for(auto a:A) for(auto b: A) for(auto c: A) for(auto d: A) {
+    word w;
+    w.push_back(a);
+    w.push_back(b);
+    w.push_back(c);
+    w.push_back(d);
+    If(wordinlanguage(w, target)) allwords += w;
+    }
+
+  std::cout << "All words of length 4: " << allwords << std::endl << std::endl;
   
   learning(target);
   
