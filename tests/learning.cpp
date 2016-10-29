@@ -87,7 +87,7 @@ inline rbool operator <= (transition a, transition b) {
   else ret = a.tgt <= b.tgt;
   }
 
-struct automaton {
+struct dfa {
   lset Q;
   lsetof<transition> delta;
   lset F;
@@ -96,7 +96,7 @@ struct automaton {
 
 lset sigma;
 
-lbool wordinlanguage_aux(word w, const automaton& a, int pos, lelem state) {
+lbool wordinlanguage_aux(word w, const dfa& a, int pos, lelem state) {
   if(pos == w.size()) return memberof(state, a.F);
   elem c = w[pos];
   
@@ -109,7 +109,7 @@ lbool wordinlanguage_aux(word w, const automaton& a, int pos, lelem state) {
   return yes;
   }
 
-lbool wordinlanguage(word w, const automaton& a) {
+lbool wordinlanguage(word w, const dfa& a) {
   return wordinlanguage_aux(w, a, 0, a.I);
   }
 
@@ -154,17 +154,17 @@ lbool operator ^ (lbool x, lbool y) {
   return (x&&!y) || (y&&!x);
   }
 
-void printAutomaton(const automaton& L) {
+void printDFA(const dfa& L) {
   std::cout << "Q = " << L.Q << std::endl;
   std::cout << "I = " << L.I << std::endl;
   std::cout << "F = " << L.F << std::endl;
   std::cout << "δ = " << L.delta << std::endl;
   }
   
-void learning(const automaton& L) {
+void learning(const dfa& L) {
 
-  std::cout << "Automaton to learn:" << std::endl;
-  printAutomaton(L);
+  std::cout << "DFA to learn:" << std::endl;
+  printDFA(L);
   std::cout << std::endl;
 
   lsetof<word> S, E;
@@ -218,7 +218,7 @@ void learning(const automaton& L) {
     
     }
   
-  automaton Learned;
+  dfa Learned;
 
   for(auto s: S) {
     lset state;
@@ -241,50 +241,55 @@ void learning(const automaton& L) {
       }
     }
   
-  std::cout << "Guessed automaton:" << std::endl;
-  printAutomaton(Learned);
+  std::cout << "Guessed DFA:" << std::endl;
+  printDFA(Learned);
   std::cout << std::endl;
   
+  // (q1,q2) \in compare iff, after reading some word, the
+  // DFA L is in state q1 and the DFA Learned
+  // is in state q2
   lsetof<elpair> compare;
-  lsetof<elpair> samples;
+  
+  // for each (q1,q2) in compare, witnesses contains ((q1,q2), w),
+  // where w is the witness word
+  lsetof<elpair> witnesses;
 
-  // todo in LOIS : newSet for <lelem, lelem>
   for(elem e: newSet(L.I)) for(elem e2: newSet(Learned.I)) {
     auto initpair = elpair(e, e2);
     compare += initpair;
-    samples += elpair(initpair, word());
+    witnesses += elpair(initpair, word());
     }
   
-  for(auto p: compare) {
-    
-    for(auto samp: samples) If(samp.first == p) {
+  for(auto witness: witnesses) {
 
-      word w = as<word> (samp.second);
-      
-      lbool m1 = memberof(p.first, L.F);
-      lbool m2 = memberof(p.second, Learned.F);
-  
-      If((m1 && !m2) || (m2 && !m1)) {
-        std::cout << "Counterexample: " << w << " where " << emptycontext << std::endl << std::endl;
-        while(true) {
-          If(!memberof(w, S)) S += w;
-          if(w.size() == 0) goto again;
-          w.resize(w.size() - 1);
-          }
+    elem q1 = as<elpair> (witness.first).first;
+    elem q2 = as<elpair> (witness.first).second;
+    
+    word w = as<word> (witness.second);
+    
+    lbool m1 = memberof(q1, L.F);
+    lbool m2 = memberof(q2, Learned.F);
+
+    If(m1 ^ m2) {
+      std::cout << "Counterexample: " << w << " where " << emptycontext << std::endl << std::endl;
+      while(true) {
+        If(!memberof(w, S)) S += w;
+        if(w.size() == 0) goto again;
+        w.resize(w.size() - 1);
         }
-      
-      for(auto a: sigma)
-        for(transition& t1: L.delta) 
-          If(t1.src == p.first && t1.symbol == a) 
-        for(transition& t2: Learned.delta) 
-          If(t2.src == p.second && t2.symbol == a) {
-            elpair p2 = elpair(t1.tgt, t2.tgt);
-            If(!memberof(p2, compare)) {
-              compare += p2;
-              samples += make_pair(p2, concat(as<word> (samp.second), a));
-              }
-            }
       }
+    
+    for(auto a: sigma)
+      for(transition& t1: L.delta) 
+        If(t1.src == q1 && t1.symbol == a) 
+      for(transition& t2: Learned.delta) 
+        If(t2.src == q2 && t2.symbol == a) {
+          elpair p2 = elpair(t1.tgt, t2.tgt);
+          If(!memberof(p2, compare)) {
+            compare += p2;
+            witnesses += make_pair(p2, concat(w, a));
+            }
+          }
     }
 
   std::cout << "Learning successful!" << std::endl;
@@ -296,12 +301,13 @@ int main() {
   // pushSolverDiagnostic("checking: ");
 
   Domain dA("Atoms");
-  sigma = dA.getSet();
-  lset A = sigma;
+  lset A = dA.getSet();
+
+  sigma = A;
 
   sym.neq = "≠";
   
-  automaton target;
+  dfa target;
   elem e0 = 0;
   elem e1 = 1;
   elem e2 = 2;
@@ -326,7 +332,7 @@ int main() {
     If(wordinlanguage(w, target)) allwords += w;
     }
 
-  std::cout << "All words of length 2: " << allwords << std::endl;
+  std::cout << "All words of length 2: " << allwords << std::endl << std::endl;
   
   learning(target);
   
