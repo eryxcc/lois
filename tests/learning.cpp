@@ -1,10 +1,8 @@
+// Learning nominal automata (INCOMPLETE!)
+// Based on the paper by Joshua Moerman, Matteo Sammartino, Alexandra Silva, 
+// Bartek Klin, Micha Szynwelski
+
 // flags
-
-// should we add counterexamples to E, rather than to S?
-#define ADD_COLUMNS
-
-// test on the queue language
-#define QUEUESIZE 5
 
 // use a tailored algorithm for membership checking, instead of using the automaton
 // (works for the queue)
@@ -13,15 +11,31 @@
 // iterate membership instead of recursing
 // #define MEMBER_ITERATIVE
 
-// test on doubleword
+// should we add counterexamples to E, rather than to S?
+#define ADD_COLUMNS
+
+// should we learn DFA or NFA?
+#define LEARN_NFA
+
+// consider only words of length <= LENGTH_LIMIT when verifying
+// (sometimes required for NFA languages)
+#define LENGTH_LIMIT 4
+
+// test on the queue language
+//#define QUEUESIZE 5
+
+// test on doubleword (currently allowing only 1 = [aa], 2 = [abab])
 // #define DOUBLEWORD 2
 
 // test on stack language
 // #define STACKSIZE 6
 
-// Learning nominal automata (INCOMPLETE!)
-// Based on the paper by Joshua Moerman, Matteo Sammartino, Alexandra Silva, 
-// Bartek Klin, Micha Szynwelski
+// test on nth last letter
+// the word is in language iff the first letter equals (NTHLAST-1) last one
+// #define NTHLAST 5
+
+// find equal letters
+#define EQLANG
 
 // See https://arxiv.org/pdf/1607.06268.pdf
 
@@ -108,16 +122,16 @@ inline rbool operator <= (transition a, transition b) {
   else ret = a.tgt <= b.tgt;
   }
 
-struct dfa {
+struct automaton {
   lset Q;
   lsetof<transition> delta;
   lset F;
-  lelem I;
+  lset I;
   };
 
 lset sigma;
 
-lbool wordinlanguage_aux(const word& w, const dfa& a, int pos, const lelem& state) {
+lbool wordinlanguage_aux(const word& w, const automaton& a, int pos, const lelem& state) {
 //  std::cout << "in state = " << state << " in " << emptycontext << std::endl;
   if(pos == w.size()) return memberof(state, a.F);
   elem c = w[pos];
@@ -131,7 +145,7 @@ lbool wordinlanguage_aux(const word& w, const dfa& a, int pos, const lelem& stat
   return yes;
   }
 
-lbool wordinlanguage(word w, const dfa& a) {
+lbool wordinlanguage(word w, const automaton& a) {
 #ifdef MEMBEROPT
 #ifdef QUEUESIZE
   word queu;
@@ -155,7 +169,7 @@ lbool wordinlanguage(word w, const dfa& a) {
 //  std::cout << "Checking word: " << w  << " in " << emptycontext << std::endl;
 
 #ifdef MEMBER_ITERATIVE
-  lset state = newSet(a.I);
+  lset state = a.I;
   lset nextstate;
   for(elem c: w) {
     nextstate = newSet();
@@ -168,7 +182,9 @@ lbool wordinlanguage(word w, const dfa& a) {
   return (state & a.F) != emptyset;
 #endif
 
-  return wordinlanguage_aux(w, a, 0, a.I);
+  lbool ret = false;
+  for(auto it: a.I) ret |= wordinlanguage_aux(w, a, 0, it);
+  return ret;
   }
 
 word concat(word x, word y) {
@@ -212,17 +228,18 @@ lbool operator ^ (lbool x, lbool y) {
   return (x&&!y) || (y&&!x);
   }
 
-void printDFA(const dfa& L) {
+void printAutomaton(const automaton& L) {
   std::cout << "Q = " << L.Q << std::endl;
   std::cout << "I = " << L.I << std::endl;
   std::cout << "F = " << L.F << std::endl;
   std::cout << "δ = " << L.delta << std::endl;
   }
-  
-void learning(const dfa& L) {
+
+#ifndef LEARN_NFA
+void learning(const automaton& L) {
 
   std::cout << "DFA to learn:" << std::endl;
-  printDFA(L);
+  printAutomaton(L);
   std::cout << std::endl;
 
   lsetof<word> S, E;
@@ -282,7 +299,7 @@ void learning(const dfa& L) {
     
     }
   
-  dfa Learned;
+  automaton Learned;
 
   for(auto s: S) {
     lset state;
@@ -292,7 +309,7 @@ void learning(const dfa& L) {
       
     If(!memberof(state, Learned.Q)) {
       Learned.Q += state;
-      If(s == word()) Learned.I = state;
+      If(s == word()) Learned.I = newSet(state);
       If(wordinlanguage(s, L))
         Learned.F += state;
 
@@ -306,7 +323,7 @@ void learning(const dfa& L) {
     }
   
   std::cout << "Guessed DFA:" << std::endl;
-  printDFA(Learned);
+  printAutomaton(Learned);
   std::cout << std::endl;
   
   // (q1,q2) \in compare iff, after reading some word, the
@@ -318,7 +335,7 @@ void learning(const dfa& L) {
   // where w is the witness word
   lsetof<elpair> witnesses;
 
-  for(elem e: newSet(L.I)) for(elem e2: newSet(Learned.I)) {
+  for(elem e: L.I) for(elem e2: Learned.I) {
     auto initpair = elpair(e, e2);
     compare += initpair;
     witnesses += elpair(initpair, word());
@@ -368,7 +385,185 @@ void learning(const dfa& L) {
   std::cout << "Learning successful!" << std::endl;
   }
 
-void buildStackAutomaton(dfa& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
+#else
+void learning(const automaton& L) {
+  std::cout << "NFA to learn:" << std::endl;
+  printAutomaton(L);
+  std::cout << std::endl;
+
+  lsetof<word> S, E;
+  S += word();
+  E += word();
+  
+  while(true) {
+    again:
+    std::cout << "S = " << S << std::endl;
+    std::cout << "E = " << E << std::endl;
+  
+    lset uprows;
+    
+    lset allrows;
+
+    for(word s: S) {
+      lset ourrow;
+      for(word e: E) If(wordinlanguage(concat(s,e), L))
+        ourrow += e;
+      
+      If(!memberof(ourrow, uprows))
+        uprows += ourrow,
+        allrows += ourrow;
+      }
+    
+    std::cout << "uprows = " << uprows << std::endl;
+
+    for(word s: S) for(elem a: sigma) {
+      lset ourrow;
+      for(word e: E) If(wordinlanguage(concat(s,a,e), L))
+        ourrow += e;
+      
+      If(!memberof(ourrow, allrows))
+        allrows += ourrow;
+      }
+
+    std::cout << "uprows = " << uprows << std::endl;
+    std::cout << "allrows = " << allrows << std::endl;
+    
+    lset primerows;
+    for(auto row: allrows) {
+      lset aggregator;
+      for(auto row2: allrows) 
+        If(row2 != row && subseteq(asSet(row2), asSet(row)))
+          aggregator |= asSet (row2);
+      If(aggregator != row)
+        primerows += row;
+      }
+    
+    std::cout << "primerows = " << primerows << std::endl;
+
+    for(word s: S) for(elem a: sigma) {
+      lset ourrow;
+      for(word e: E) If(wordinlanguage(concat(s,a,e), L))
+        ourrow += e;
+      
+      If(memberof(ourrow, primerows) && !memberof(ourrow, uprows)) {
+        std::cout << "Adding row: " << concat(s,a) << std::endl;
+        S += concat(s,a);
+        goto again;
+        }
+      }
+    
+    for(word s1: S) for(word s2: S) {
+      lbool contained = true;
+      for(word e: E)
+        If(wordinlanguage(concat(s1,e),L) && !wordinlanguage(concat(s2,e),L))
+          contained = false;
+        
+      If(contained) for(elem a: sigma) {
+        for(word e: E)
+          If(wordinlanguage(concat(s1,a,e),L) && !wordinlanguage(concat(s2,a,e),L)) {
+          std::cout << "Adding column: " << concat(a,e) << std::endl;
+          E += concat(a, e);
+          goto again;
+          }
+        }
+      }
+        
+    automaton learned;
+    learned.Q = primerows & uprows;
+
+    lset initrow;
+    for(word e: E) If(wordinlanguage(e, L)) initrow += e;
+        
+    for(auto row: learned.Q) {
+      If(subseteq(asSet (row), initrow)) learned.I += row;
+      If(memberof(word(), asSet (row))) learned.F += row;
+      }
+
+    for(auto s: S) {
+      lset rowS;
+      for(word e: E) If(wordinlanguage(concat(s, e), L)) rowS += e;
+
+      for(auto a: sigma) {
+        lset rowsa;
+        for(word e: E) If(wordinlanguage(concat(s, a, e), L)) rowsa += e;
+
+        for(auto r: learned.Q) If(subseteq(asSet (r), rowsa))
+          If(!memberof(transition(rowS, a, r), learned.delta))
+            learned.delta += transition(rowS, a, r);
+        }
+      }
+    
+    std::cout << std::endl << "Guessed DFA:" << std::endl;
+    printAutomaton(learned);
+    std::cout << std::endl;
+
+    lsetof<elpair> compare;
+    lsetof<elpair> witnesses;
+    
+    compare += elpair(L.I, learned.I);
+    witnesses += elpair(elpair(L.I, learned.I), word());
+    
+    for(auto wit: witnesses) {
+      lset states1 = asSet(as<elpair> (wit.first).first);
+      lset states2 = asSet(as<elpair> (wit.first).second);
+      auto w = as<word> (wit.second);
+      
+      If(((states1 & L.F) != emptyset) ^ ((states2 & learned.F) != emptyset)) {
+        std::cout << "Counterexample: " << w << " where " << emptycontext << std::endl << std::endl;
+        while(true) {
+  
+  #ifdef ADD_COLUMNS
+          If(!memberof(w, E)) E += w;
+  #else
+  #warn ADD_COLUMNS recommended for learnNFA
+          If(!memberof(w, S)) S += w;
+  #endif
+          if(w.size() == 0) goto again;
+        
+  #ifdef ADD_COLUMNS
+          for(int i=0; i<int(w.size()-1); i++) w[i] = w[i+1];
+  #endif
+          w.resize(w.size() - 1);
+          }
+        }
+
+#ifdef LENGTH_LIMIT
+      if(w.size() >= LENGTH_LIMIT) {
+        std::cout << "Ignoring suffixes of: " << w << " where " << emptycontext << std::endl << std::endl;
+        continue;
+        }
+#endif
+
+      for(elem a: sigma) {
+        lset nextstate1;
+        lset nextstate2;
+        for(auto t: L.delta) 
+          If(t.symbol == a && memberof(t.src, states1))
+            If(!memberof(t.tgt, nextstate1))
+            nextstate1 += t.tgt;
+
+        for(auto t: learned.delta) 
+          If(t.symbol == a && memberof(t.src, states2))
+            If(!memberof(t.tgt, nextstate2))
+              nextstate2 += t.tgt;
+            
+        auto p = elpair(nextstate1, nextstate2);
+        
+        If(!memberof(p, compare)) {
+          compare += p;
+          witnesses += elpair(p, concat(w, a));
+          }
+        }
+      }
+
+    std::cout << "Learned correctly!" << std::endl;
+    break;
+    }  
+  
+  }
+#endif
+
+void buildStackAutomaton(automaton& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
  
   target.Q += w;
   target.F += w;
@@ -384,7 +579,7 @@ void buildStackAutomaton(dfa& target, lset& A, elem& etrash, elem& epush, elem& 
   else for(elem a: A) target.delta += transition(w, elpair(epush, a), etrash);
   }
   
-void buildQueueAutomaton(dfa& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
+void buildQueueAutomaton(automaton& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
  
   target.Q += w;
   target.F += w;
@@ -406,6 +601,27 @@ void buildQueueAutomaton(dfa& target, lset& A, elem& etrash, elem& epush, elem& 
     }
   else for(elem a: A) target.delta += transition(w, elpair(epush, a), etrash);
   }
+
+void buildNthLast(automaton& target, lset& A, word w, int nth) {
+  
+  if(w.size() == nth) {    
+    If(w[0] == w[1]) 
+      target.F += w;
+    for(auto a: A) {
+      word w2 = w;
+      for(int i=1; i<nth-1; i++) w2[i] = w2[i+1];
+      w2[nth-1] = a;
+      target.delta += transition(w, a, w2);
+      }
+    }
+  else {
+    for(auto a: sigma) {
+      word w2 = concat(w, a);
+      target.delta += transition(w, a, w2);
+      buildNthLast(target, A, w2, nth);
+      }
+    }    
+  }
   
 int main() {
   lasttime = getVa();
@@ -423,7 +639,7 @@ int main() {
 
   sym.neq = "≠";
   
-  dfa target;
+  automaton target;
   
   // language L1 from the paper (repeated letter)
 
@@ -437,7 +653,7 @@ int main() {
     target.Q += e2;
     for(auto a:A) target.Q += a;
     target.F += e1;
-    target.I = e0;
+    target.I += e0;
     for(auto a:A) target.delta += transition(e0, a, a);
     for(auto a:A) target.delta += transition(a, a, e1);
     for(auto a:A) for(auto b: A) If(a != b) target.delta += transition(a, b, e2);
@@ -459,7 +675,7 @@ int main() {
     for(auto a: A) for(auto b: A) target.Q += elpair(a,b); // read two letters
     for(auto a: A) target.Q += elpair(a,eini); // read three letters, wait for 'a'
     target.F += eaccept;
-    target.I = eini;
+    target.I += eini;
     
     for(auto a: A) target.delta += transition(eini, a, a);
     for(auto a: A) for(auto b: A)
@@ -485,7 +701,7 @@ int main() {
     elem epop = 2;
     sigma = newSet(epush, epop) * A;
     target.Q += etrash;
-    target.I = word();
+    target.I += word();
     for(elem a: A) target.delta += transition(word(), elpair(epop, a), etrash);
     
     buildStackAutomaton(target, A, etrash, epush, epop, word(), STACKSIZE);
@@ -500,12 +716,46 @@ int main() {
     elem epop = 2;
     sigma = newSet(epush, epop) * A;
     target.Q += etrash;
-    target.I = word();
+    target.I += word();
     
     buildQueueAutomaton(target, A, etrash, epush, epop, word(), QUEUESIZE);
     }
 #endif
-  
+
+#ifdef NTHLAST
+  if(true) {
+    target.I += word();
+    buildNthLast(target, A, word(), NTHLAST);
+    }
+#endif
+
+#ifdef EQLANG
+
+#ifndef LEARN_NFA
+#error Learning NFA as DFA!
+#endif
+
+#ifndef LENGTH_LIMIT
+#warn Will not work without LENGTH_LIMIT
+#endif
+  if(true) {
+    printf("eq lang\n");
+    elem einit = 0;
+    elem eaccept = 1;
+    target.Q += einit;
+    target.Q += eaccept;
+    target.I += einit;
+    target.F += eaccept;
+    for(elem a: A) {
+      target.delta += transition(einit, a, a);
+      target.delta += transition(einit, a, einit);
+      target.delta += transition(a, a, eaccept);
+      target.delta += transition(eaccept, a, eaccept);
+      for(elem b: A) target.delta += transition(a, b, a);
+      }
+    }
+#endif
+
   lset allwords;
   
   for(auto a: sigma) for(auto b: sigma) {
