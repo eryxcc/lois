@@ -1045,7 +1045,6 @@ struct lset {
   lset(const lsetof<T>& o) { ain = currentcontext; p = newInternalSet(); (*this) |= o.orig; }
 
   lset& operator = (const lset& rval) {
-    if(ain == rval.ain && ain == currentcontext) { p = rval.p; return *this; }
     if(usesenv(rval, ain)) throw assignment_exception();
     removeall(); (*this) |= rval;
     return *this;
