@@ -402,19 +402,18 @@ void learning(const automaton& L) {
   
     lset uprows;
     
-    lset allrows;
-
     for(word s: S) {
       lset ourrow;
       for(word e: E) If(wordinlanguage(concat(s,e), L))
         ourrow += e;
       
       If(!memberof(ourrow, uprows))
-        uprows += ourrow,
-        allrows += ourrow;
+        uprows += ourrow;
       }
     
     std::cout << "uprows = " << uprows << std::endl;
+
+    lset allrows = uprows;
 
     for(word s: S) for(elem a: sigma) {
       lset ourrow;
@@ -644,6 +643,7 @@ int main() {
   // language L1 from the paper (repeated letter)
 
 #if DOUBLEWORD == 1
+#define WHICH doubleword
   if(true) {
     elem e0 = 0;
     elem e1 = 1;
@@ -664,6 +664,7 @@ int main() {
   // language L2 from the paper (repeated two letters: 'baba')
 
 #if DOUBLEWORD == 2
+#define WHICH doubleword
   if(true) {
     elem eini = 0;   // initial
     elem etrash = 1; // trash
@@ -694,6 +695,7 @@ int main() {
 #endif
   
 #ifdef STACKSIZE
+#define WHICH stacksize
   if(true) {
     int reps = 0;
     elem etrash = 0;
@@ -709,6 +711,7 @@ int main() {
 #endif
   
 #ifdef QUEUESIZE
+#define WHICH queuesize
   if(true) {
     int reps = 0;
     elem etrash = 0;
@@ -723,6 +726,7 @@ int main() {
 #endif
 
 #ifdef NTHLAST
+#define WHICH nthlast
   if(true) {
     target.I += word();
     buildNthLast(target, A, word(), NTHLAST);
@@ -730,6 +734,7 @@ int main() {
 #endif
 
 #ifdef EQLANG
+#define WHICH eqlang
 
 #ifndef LEARN_NFA
 #error Learning NFA as DFA!
