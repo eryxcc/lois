@@ -62,9 +62,9 @@ struct pushcontext {
   };
 
 
-rset lset::removeall() {
+lset lset::removeall() {
   
-  rset xyes  = std::make_shared<ESet> ();
+  lset xyes  = std::make_shared<ESet> ();
   rbool phi = outenv(true, false, ain);
 
   swap(xyes->elts, p->elts);
@@ -79,7 +79,7 @@ rset lset::removeall() {
 
 elem removeallnonset(elem x) {
   /*
-  rset xs(x);
+  lset xs(x);
   auto xset  = std::make_shared<ESet> ();
 
   auto xyes  = std::make_shared<ESet> ();
@@ -106,17 +106,17 @@ elem removeallnonset(elem x) {
   }
 
 lset& lset::operator -= (elem y) {
-  rset x1 = removeall();
+  lset x1 = removeall();
   p->insert(y, ain);
-  rset y1 = removeall();
+  lset y1 = removeall();
   for(elem e: x1) If(!memberof(e, y1)) p->insert(e, ain);
   return (*this);
   }
 
-lset& lset::operator &= (negated<rset> y) {
-  rset x1 = removeall();
+lset& lset::operator &= (negated<lset> y) {
+  lset x1 = removeall();
   (*this) |= y.original;
-  rset y1 = removeall();
+  lset y1 = removeall();
   for(elem e: x1) If(!memberof(e, y1)) p->insert(e, ain);
   return (*this);
   }
@@ -124,9 +124,9 @@ lset& lset::operator &= (negated<rset> y) {
 lset& lset::operator &= (const lset& y) {
   // does not work that easily:
   // for(elem e: removeall(x)) If(e != y) x += e;
-  rset x1 = removeall();
+  lset x1 = removeall();
   (*this) += y;
-  rset y1 = removeall();
+  lset y1 = removeall();
   for(elem e: x1) {
     lbool f(ftrue);
     for(elem ye: y1) {
@@ -138,7 +138,7 @@ lset& lset::operator &= (const lset& y) {
   }
 
 // remove the repetitions: each element will be listed only once in the optimized set
-rset optimize(rset x) {
+lset optimize(const lset& x) {
   lset y;
   for(elem e: x) If(!memberof(e, y)) y += e;
   return y;
@@ -191,9 +191,9 @@ lset& operator += (lset& A, const lelem& x) {
   }
 
 // getorbit
-rset getorbit(elem what, std::initializer_list<Relation*> rels, contextptr nowcontext, contextptr anccontext) {
+lset getorbit(elem what, std::initializer_list<Relation*> rels, contextptr nowcontext, contextptr anccontext) {
 
-  rset X = newSet();
+  lset X = newSet();
   
   std::vector<std::pair<vptr, vptr>> v;
   rbool phi = true;
@@ -239,14 +239,14 @@ RelUnary *singletonRelation;
 
 std::string singletonRelationName = "SR";
 
-rset getsingletonset(const lset& X) {
+lset getsingletonset(const lset& X) {
 
   if(!singletonDomain) {
     singletonDomain = new Domain("S");
     singletonRelation = new RelUnary(singletonRelationName, 2);
     }
     
-  rset Result = newSet();
+  lset Result = newSet();
   elem elY = newSet();
   std::shared_ptr<ESet> Y = std::dynamic_pointer_cast<ESet> (elY.p);
   std::vector<vptr> v;

@@ -20,28 +20,28 @@ using namespace lois;
 
 
 FUNCTION("min")
-rset min(rset X) { 
+lset min(lset X) { 
   lset answer;
   for(elem x: X) If (FORALL(y, X, x <= y)) answer += x;
   return answer;
 }
 
 FUNCTION("interval")
-rset interval(term a, 
-  term b, rset A) {  
+lset interval(term a, 
+  term b, lset A) {  
   return FILTER(x, A, 
     (a < x) && (x < b));
 }
   
 FUNCTION("sup")
-rset supremum(rset X, rset domain) { 
+lset supremum(lset X, lset domain) { 
   return min(FILTER(m, domain, FORALL(x, X, m >= x)));
 }
 
 FUNCTION("reachability")
-rset reach 
+lset reach 
   (lsetof<elpair> E, 
-     rset S) {
+     lset S) {
   lset R = S;
   lset P;
   While (P!=R) {
@@ -228,7 +228,7 @@ SECTION("j2")
   }
  
 // SECTION{"petri"}
-//   bool coverable(rset P, rset V, lelem I, lelem F)
+//   bool coverable(lset P, lset V, lelem I, lelem F)
 //     //test coverability of a target vector F from an initial vector I
 //       //in a Petri net P -- a finite set of vectors in Z^k
 //     //V is the space N^k
@@ -400,7 +400,7 @@ int cardinalityBad(elem X) {
 
 FUNCTION("memberof")
 
-rbool ismemberof(elem a, rset B) {
+rbool ismemberof(elem a, lset B) {
   lbool phi(ffalse);
   for(elem b: B) 
     If (a == b) 
@@ -408,7 +408,7 @@ rbool ismemberof(elem a, rset B) {
   return phi;
 }
 
-  rbool issubseteq(rset A, rset B) {
+  rbool issubseteq(lset A, lset B) {
     lbool phi(ftrue);
     for(elem a: A) 
       If (!memberof(a, B)) 
@@ -418,7 +418,7 @@ rbool ismemberof(elem a, rset B) {
 
 FUNCTION("card")
 
-  lsetof<int> card(rset X) {
+  lsetof<int> card(lset X) {
     lsetof<int> answer;
     for(elem a: X) 
       If (answer.isEmpty()) {
@@ -431,7 +431,7 @@ FUNCTION("card")
 
 FUNCTION("max")
 
-  lelem max(rset X) { 
+  lelem max(lset X) { 
     lset answer;
     for(elem x: X) If (FORALL(y, X, x >= y)) answer += x;
     return extract(answer);
@@ -439,7 +439,7 @@ FUNCTION("max")
 
 FUNCTION("maxbad")
 
-  lelem maxBad(rset X) {
+  lelem maxBad(lset X) {
     lelem ans;
     for(elem x: X) 
       If (ans.isUndefined() || x > ans)

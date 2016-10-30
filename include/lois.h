@@ -109,7 +109,6 @@ struct Formula;
 struct term;
 struct elem;
 struct lset;
-typedef lset rset;
 struct Subdomain;
 struct rbool;
 struct Element;
@@ -1075,7 +1074,7 @@ inline rbool operator != (const lset& x, const lset& y) { return (*x.p) != (*y.p
 inline bool isused(vptr v, const lset& e) { return e->uses(v); }
 inline lset newSet() { return lset(); }
 
-inline negated<rset> operator ~ (const lset& A) { return negated<rset>(A); }
+inline negated<lset> operator ~ (const lset& A) { return negated<lset>(A); }
 template<class T>
   negated<lsetof<T>> operator ~ (const lsetof<T>& A) { return negated<lsetof<T>> (A); }
 

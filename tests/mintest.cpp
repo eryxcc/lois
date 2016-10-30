@@ -55,7 +55,7 @@ inline lset& operator += (lset& x, const rset y) {
   return x += elem(y);
   } */
 
-void minimalize1(rset Q, rset F, lsetof<eltuple> delta, rset alph) {
+void minimalize1(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
@@ -104,7 +104,7 @@ void minimalize1(rset Q, rset F, lsetof<eltuple> delta, rset alph) {
   cout << "classes: " << classes << endl;  
   }
 
-void minimalize2(rset Q, rset F, lsetof<eltuple> delta, rset alph) {
+void minimalize2(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
@@ -172,7 +172,7 @@ int main() {
 //  solverCrash();
 
   Domain dA("Real");
-  rset A = dA.getSet();
+  lset A = dA.getSet();
   
   lset Q;
   lset F;
@@ -191,7 +191,7 @@ int main() {
 //   cout << "R= " << R << endl;
     
 
-  rset alph = A;
+  lset alph = A;
 
   Q += 0;
   for(elem a: A) Q += eltuple({a});

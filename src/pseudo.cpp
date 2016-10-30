@@ -2,9 +2,9 @@
 
 namespace lois {
 
-rset branchset(contextptr anccontext, contextptr nowcontext) {
+lset branchset(contextptr anccontext, contextptr nowcontext) {
 
-  rset X = newSet();
+  lset X = newSet();
   
   eltuple v;
   contextptr e = nowcontext;

@@ -93,7 +93,7 @@ void EIterator::disconnectIterator() {
   at = nullelem; currentcontext = ourcontext->parent;
   }
 
-rset asSet(elem a) {
+lset asSet(elem a) {
   auto sa = std::dynamic_pointer_cast<ESet> (a.p);
   if(!sa) throw as_exception();
   return sa;
@@ -265,16 +265,16 @@ void ESet::insert(elem a, contextptr ain, contextptr nowenv) {
   elts.emplace_back(selvar, selphi, a);
   }
 
-rset newSet(elem x) { 
-  rset S = newSet(); S->insert(x, currentcontext); return S; 
+lset newSet(elem x) { 
+  lset S = newSet(); S->insert(x, currentcontext); return S; 
   }
 
-rset newSet(elem x, elem y) { 
-  rset S = newSet(); S->insert(x, currentcontext); S->insert(y, currentcontext); return S; 
+lset newSet(elem x, elem y) { 
+  lset S = newSet(); S->insert(x, currentcontext); S->insert(y, currentcontext); return S; 
   }
 
-rset newSet(std::initializer_list<elem> l) {
-  rset S = newSet(); for(elem it: l) S->insert(it, currentcontext); return S;
+lset newSet(std::initializer_list<elem> l) {
+  lset S = newSet(); for(elem it: l) S->insert(it, currentcontext); return S;
   }
 
 lsetof<term> Domain::getSet() {
@@ -285,10 +285,10 @@ lsetof<term> Domain::getSet() {
   e.phi = ftrue;
   e.a = x;
   e.var.push_back(x);
-  lset reps = rset(D);
+  lset reps = lset(D);
   return lsetof<term> (reps);
   }
 
-rset emptyset;
+lset emptyset;
 
 }

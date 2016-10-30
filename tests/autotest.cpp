@@ -170,23 +170,23 @@ void testTree(const lset& A) {
 // whether a subset of A has exactly one supremum, unless empty or
 // unbounded.
 
-lelem max(rset X) { 
+lelem max(lset X) { 
   lset answer = newSet();
   for(elem x: X) If(FORALL(y, X, x >= y)) answer += x;
   return extract(answer);
   }
 
-lelem min(rset X) { 
+lelem min(lset X) { 
   lset answer = newSet();
   for(elem x: X) If(FORALL(y, X, x <= y)) answer += x;
   return extract(answer);
   }
 
-lelem supremum(rset X, rset domain) { 
+lelem supremum(lset X, lset domain) { 
   return min(FILTER(m, domain, FORALL(x, X, m >= x)));
   }
 
-void testOrder(rset A) {
+void testOrder(lset A) {
 
   for(elem a: A) for(elem b: A) for(elem c: A) {
     rbool phi = (a<b);
@@ -200,7 +200,7 @@ void testOrder(rset A) {
     testSat(MAYBE, a<c && c<b);
     testSat(MAYBE, b<c && c<a);
 
-    rset three = newSet({a,b,c});
+    lset three = newSet({a,b,c});
     lelem mx = max(three);
     cout << "max(" << three << ") = " << mx << endl;
 
@@ -217,7 +217,7 @@ void testOrder(rset A) {
     }
   
   for(elem a: A) for(elem b: A) If(a<b) {
-    rset interval = FILTER(z, A, a<z && z<b);
+    lset interval = FILTER(z, A, a<z && z<b);
     lelem sup = supremum(interval, A);
     cout << "sup(interval) = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
@@ -232,7 +232,7 @@ void testOrder(rset A) {
 
 // BFS on the random bipartite graph, as advertised in the paper.
 
-void testRandomBipartite(rset A) {
+void testRandomBipartite(lset A) {
   string R = "R";
 
   RelBinary edge(sym.edge, sym.noedge, lmNoLoops, smSymmetric);
@@ -295,7 +295,7 @@ void testQueue() {
 // test whether the "-=" operator works in the natural way, as
 // advertised in the paper.
 
-void testRemoval(rset A) {
+void testRemoval(lset A) {
   lset X, Y;
   
   for(elem a: A) for(elem b: A) {
@@ -311,7 +311,7 @@ void testRemoval(rset A) {
 // test whether an improper assignment throws an exception, as
 // mentioned in the paper.
 
-void testAssignment(rset A) {
+void testAssignment(lset A) {
   lbool phi;
   
   try {
@@ -322,12 +322,12 @@ void testAssignment(rset A) {
   }
 
 // calculate the powerset.
-rset orbitpowerset(rset X) {
+lset orbitpowerset(lset X) {
   lset result;
   for(elem x: X) {
-    rset orbit = getorbit(x, {});
-    rset Y = X &~ orbit;
-    rset P1 = orbitpowerset(Y);
+    lset orbit = getorbit(x, {});
+    lset Y = X &~ orbit;
+    lset P1 = orbitpowerset(Y);
     for(elem p: P1) {
       result += p;
       result += (asSet(p) | orbit);
@@ -337,12 +337,12 @@ rset orbitpowerset(rset X) {
   return newSet(emptyset);
   }
 
-void testPowerset(rset A) {
+void testPowerset(lset A) {
   cout << "orbit powerset of " << A << " is:" << endl << orbitpowerset(A) << endl;
   }
   
 
-void testFullyPseudoparallel(rset A) {
+void testFullyPseudoparallel(lset A) {
   lset X;
   for(elem a: A) X += a;
   for(elem a: A) for(elem b: A) If(a != b) X += elpair(a,b);

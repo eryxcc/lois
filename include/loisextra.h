@@ -74,7 +74,7 @@ inline lset operator & (const lset& x, const lset& y) {
   return xy;
   }
 
-inline lset operator & (const lset& x, negated<rset> y) { 
+inline lset operator & (const lset& x, negated<lset> y) { 
   lset xy;
   for(elem e: x) If(!memberof(e, y.original)) xy += e;
   return xy;
@@ -98,7 +98,7 @@ template<class T> inline lsetof<T> operator | (const lsetof<T>& x, const lsetof<
 lset optimize(const lset& x);
 
 // optimize the elements of given type
-lset optimizeType(const lset& x, rset type);
+lset optimizeType(const lset& x, const lset& type);
 
 // the Cartesian product
 lset operator * (const lset& x, const lset& y);

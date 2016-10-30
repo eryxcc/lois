@@ -28,7 +28,7 @@ void testSat(int mode, rbool phi) {
   if(cnt != mode) exit(1);
   }
 
-Domain *getDomain(rset A) {
+Domain *getDomain(lset A) {
   for(elem x:A) return as<term>(x).asVar()->getDom();
   }
 
@@ -36,23 +36,23 @@ Domain *getDomain(rset A) {
 // whether a subset of A has exactly one supremum, unless empty or
 // unbounded.
 
-lelem max(rset X) { 
+lelem max(lset X) { 
   lset answer = newSet();
   for(elem x: X) If(FORALL(y, X, x >= y)) answer += x;
   return extract(answer);
   }
 
-lelem min(rset X) { 
+lelem min(lset X) { 
   lset answer = newSet();
   for(elem x: X) If(FORALL(y, X, x <= y)) answer += x;
   return extract(answer);
   }
 
-lelem supremum(rset X, rset domain) { 
+lelem supremum(lset X, lset domain) { 
   return min(FILTER(m, domain, FORALL(x, X, m >= x)));
   }
 
-void testOrder(rset A) {
+void testOrder(lset A) {
 
   for(elem a: A) for(elem b: A) for(elem c: A) {
     rbool phi = (a<b);
@@ -66,7 +66,7 @@ void testOrder(rset A) {
     testSat(MAYBE, a<c && c<b);
     testSat(MAYBE, b<c && c<a);
 
-    rset three = newSet({a,b,c});
+    lset three = newSet({a,b,c});
     lelem mx = max(three);
     // cout << "max(" << three << ") = " << mx << endl;
 
@@ -83,7 +83,7 @@ void testOrder(rset A) {
     }
   
   for(elem a: A) for(elem b: A) If(a<b) {
-    rset interval = FILTER(z, A, a<z && z<b);
+    lset interval = FILTER(z, A, a<z && z<b);
     lelem sup = supremum(interval, A);
     // cout << "sup(interval) = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
@@ -99,7 +99,7 @@ void testOrder(rset A) {
 // test whether the 'queue' semantics of the 'for' loop works, as
 // advertised in the paper.
 
-void testQueue(rset A) {
+void testQueue(lset A) {
   lsetof<int> N;
   N += 0;
   for(int n: N) if(n < 10) N += (n+1);
@@ -110,7 +110,7 @@ void testQueue(rset A) {
 // test whether the "-=" operator works in the natural way, as
 // advertised in the paper.
 
-void testRemoval(rset A) {
+void testRemoval(lset A) {
   lset X, Y;
   
   for(elem a: A) for(elem b: A) {
@@ -126,7 +126,7 @@ void testRemoval(rset A) {
 // test whether an improper assignment throws an exception, as
 // mentioned in the paper.
 
-void testAssignment(rset A) {
+void testAssignment(lset A) {
   lbool phi;
   
   try {
@@ -138,7 +138,7 @@ void testAssignment(rset A) {
 
 // reachability test
 
-rset reach(rsetof<elpair> E, rset S) {
+lset reach(rsetof<elpair> E, lset S) {
   lset R = S;
   lset P;
   While (P!=R) {
@@ -150,7 +150,7 @@ rset reach(rsetof<elpair> E, rset S) {
   return R;
 }
 
-void testReachable(rset A) {
+void testReachable(lset A) {
 
   lsetof<elpair> Pairs;
      
@@ -179,7 +179,7 @@ void testReachable(rset A) {
 
 // minimalization test
 
-void minimalize1(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
+void minimalize1(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
@@ -228,7 +228,7 @@ void minimalize1(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
   cout << "classes: " << classes << endl;  
   }
 
-void minimalize2(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
+void minimalize2(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
@@ -271,7 +271,7 @@ void minimalize2(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
   }
 
 // as in the SAT paper
-void minimalize3(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
+void minimalize3(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
   
   lsetof<elpair> E;
   for(elem p: Q) for(elem q: Q) for(elem a: alph) 
@@ -293,7 +293,7 @@ void minimalize3(rset Q, rset F, rsetof<eltuple> delta, rset alph) {
   cout << "classes: " << classes << endl;  
   }
 
-void mtestA(rset A, int id) {
+void mtestA(lset A, int id) {
   lset Q;
   lset F;
   lsetof<eltuple> delta;
@@ -311,7 +311,7 @@ void mtestA(rset A, int id) {
 //   cout << "R= " << R << endl;
     
 
-  rset alph = A;
+  lset alph = A;
 
   Q += 0;
   for(elem a: A) Q += eltuple({a});
@@ -348,7 +348,7 @@ void mtestA(rset A, int id) {
   if(id == 3) minimalize3(Q, F, delta, alph);
   }
 
-void mtestB(rset A, int id) {
+void mtestB(lset A, int id) {
   RelInt real(sym.greater, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
   Domain *d = getDomain(A);
@@ -375,20 +375,20 @@ void mtestB(rset A, int id) {
   if(id == 3) minimalize3(Q, F, delta, alph);
   }
 
-void testMinimizeA1(rset A) { mtestA(A, 1); }
+void testMinimizeA1(lset A) { mtestA(A, 1); }
                  
-void testMinimizeA2(rset A) { mtestA(A, 2); }
+void testMinimizeA2(lset A) { mtestA(A, 2); }
 
-void testMinimizeA3(rset A) { mtestA(A, 3); }
+void testMinimizeA3(lset A) { mtestA(A, 3); }
 
-void testMinimizeB1(rset A) { mtestB(A, 1); }
+void testMinimizeB1(lset A) { mtestB(A, 1); }
 
-void testMinimizeB2(rset A) { mtestB(A, 2); }
+void testMinimizeB2(lset A) { mtestB(A, 2); }
 
-void testMinimizeB3(rset A) { mtestB(A, 3); }
+void testMinimizeB3(lset A) { mtestB(A, 3); }
 // testReal
 
-void testInt(rset A) { 
+void testInt(lset A) { 
   string symg = "gt";
   RelInt rint(symg, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   Domain *D = getDomain(A);
@@ -408,7 +408,7 @@ void testInt(rset A) {
   mainOrder = ord;
   }
 
-void testReal(rset A) { 
+void testReal(lset A) { 
   string symg = "gt";
   RelReal real(symg, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
@@ -434,7 +434,7 @@ void testReal(rset A) {
 
 // packings on an interval
 
-rset packings(rset F, RelReal& real, term radius) {
+lset packings(lset F, RelReal& real, term radius) {
   lset done;
   lset active = newSet(emptyset);
 
@@ -459,7 +459,7 @@ rset packings(rset F, RelReal& real, term radius) {
   return done;
   } 
 
-void testPacking(rset A) {
+void testPacking(lset A) {
   RelReal real(sym.greater, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
   Domain *d = getDomain(A);
@@ -530,7 +530,7 @@ rsetof<rsetof<point>> circlepackings(rsetof<point> F, RelReal& real, term mindis
   return done;
   } 
 
-void testCirclePacking(rset A) {
+void testCirclePacking(lset A) {
   RelReal real(sym.greater, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
   Domain *d = getDomain(A);
@@ -568,7 +568,7 @@ long long getVa() {
   return tval.tv_sec * 1000000 + tval.tv_usec;
   }
 
-typedef void loistest(rset A);
+typedef void loistest(lset A);
 
 std::string whichSolver;
 
