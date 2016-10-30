@@ -1,3 +1,24 @@
+// flags
+
+// should we add counterexamples to E, rather than to S?
+#define ADD_COLUMNS
+
+// test on the queue language
+#define QUEUESIZE 5
+
+// use a tailored algorithm for membership checking, instead of using the automaton
+// (works for the queue)
+#define MEMBEROPT
+
+// iterate membership instead of recursing
+// #define MEMBER_ITERATIVE
+
+// test on doubleword
+// #define DOUBLEWORD 2
+
+// test on stack language
+// #define STACKSIZE 6
+
 // Learning nominal automata (INCOMPLETE!)
 // Based on the paper by Joshua Moerman, Matteo Sammartino, Alexandra Silva, 
 // Bartek Klin, Micha Szynwelski
@@ -96,8 +117,8 @@ struct dfa {
 
 lset sigma;
 
-lbool wordinlanguage_aux(word w, const dfa& a, int pos, const lelem& state) {
-  std::cout << "in state = " << state << " in " << emptycontext << std::endl;
+lbool wordinlanguage_aux(const word& w, const dfa& a, int pos, const lelem& state) {
+//  std::cout << "in state = " << state << " in " << emptycontext << std::endl;
   if(pos == w.size()) return memberof(state, a.F);
   elem c = w[pos];
   
@@ -111,7 +132,42 @@ lbool wordinlanguage_aux(word w, const dfa& a, int pos, const lelem& state) {
   }
 
 lbool wordinlanguage(word w, const dfa& a) {
-  std::cout << "Checking word: " << w  << " in " << emptycontext << std::endl;
+#ifdef MEMBEROPT
+#ifdef QUEUESIZE
+  word queu;
+  lbool res = true;
+  int qid = 0;
+  for(elem c: w) {
+    elpair p = as<elpair> (c);
+    Ife(p.first == 1) { 
+      if(queu.size() == qid + QUEUESIZE) return false;
+      queu.push_back(p.second);
+      }
+    else {
+      if(qid == queu.size()) return false;
+      res &= (queu[qid] == p.second);
+      qid++;
+      }
+    }
+  return res;
+#endif
+#endif
+//  std::cout << "Checking word: " << w  << " in " << emptycontext << std::endl;
+
+#ifdef MEMBER_ITERATIVE
+  lset state = newSet(a.I);
+  lset nextstate;
+  for(elem c: w) {
+    nextstate = newSet();
+    for(transition& t: a.delta) 
+      If(memberof(t.src, state) && t.symbol == c) 
+        nextstate += t.tgt;
+    state = nextstate;
+    }
+  
+  return (state & a.F) != emptyset;
+#endif
+
   return wordinlanguage_aux(w, a, 0, a.I);
   }
 
@@ -193,7 +249,7 @@ void learning(const dfa& L) {
       for(auto t: S) {
         lbool ok = true;
         for(auto e: E) {
-          std::cout << "s="<<s<<" t="<<t<<" a="<<a<<" e="<<e << std::endl;
+//        std::cout << "s="<<s<<" t="<<t<<" a="<<a<<" e="<<e << std::endl;
           If(wordinlanguage(concat((s),a,(e)), L) ^ wordinlanguage(concat((t),(e)), L))
             ok = false;
           }
@@ -281,7 +337,6 @@ void learning(const dfa& L) {
     If(m1 ^ m2) {
       std::cout << "Counterexample: " << w << " where " << emptycontext << std::endl << std::endl;
       while(true) {
-#define ADD_COLUMNS
 
 #ifdef ADD_COLUMNS
         If(!memberof(w, E)) E += w;
@@ -371,8 +426,9 @@ int main() {
   dfa target;
   
   // language L1 from the paper (repeated letter)
-  
-  if(false) {
+
+#if DOUBLEWORD == 1
+  if(true) {
     elem e0 = 0;
     elem e1 = 1;
     elem e2 = 2;
@@ -387,10 +443,12 @@ int main() {
     for(auto a:A) for(auto b: A) If(a != b) target.delta += transition(a, b, e2);
     for(auto a:A) target.delta += transition(e2, a, e2);
     }
+#endif
 
   // language L2 from the paper (repeated two letters: 'baba')
-  
-  if(false) {
+
+#if DOUBLEWORD == 2
+  if(true) {
     elem eini = 0;   // initial
     elem etrash = 1; // trash
     elem eaccept = 2; // accept
@@ -417,8 +475,10 @@ int main() {
     for(auto a: A) target.delta += transition(etrash, a, etrash);
     for(auto a: A) target.delta += transition(eaccept, a, etrash);
     }
+#endif
   
-  if(false) {
+#ifdef STACKSIZE
+  if(true) {
     int reps = 0;
     elem etrash = 0;
     elem epush = 1;
@@ -428,9 +488,11 @@ int main() {
     target.I = word();
     for(elem a: A) target.delta += transition(word(), elpair(epop, a), etrash);
     
-    buildStackAutomaton(target, A, etrash, epush, epop, word(), 1);
+    buildStackAutomaton(target, A, etrash, epush, epop, word(), STACKSIZE);
     }
+#endif
   
+#ifdef QUEUESIZE
   if(true) {
     int reps = 0;
     elem etrash = 0;
@@ -440,8 +502,9 @@ int main() {
     target.Q += etrash;
     target.I = word();
     
-    buildQueueAutomaton(target, A, etrash, epush, epop, word(), 2);
+    buildQueueAutomaton(target, A, etrash, epush, epop, word(), QUEUESIZE);
     }
+#endif
   
   lset allwords;
   
