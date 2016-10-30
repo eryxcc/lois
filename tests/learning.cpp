@@ -273,8 +273,18 @@ void learning(const dfa& L) {
     If(m1 ^ m2) {
       std::cout << "Counterexample: " << w << " where " << emptycontext << std::endl << std::endl;
       while(true) {
+#define ADD_COLUMNS
+
+#ifdef ADD_COLUMNS
+        If(!memberof(w, E)) E += w;
+#else
         If(!memberof(w, S)) S += w;
+#endif
         if(w.size() == 0) goto again;
+      
+#ifdef ADD_COLUMNS
+        for(int i=0; i<int(w.size()-1); i++) w[i] = w[i+1];
+#endif
         w.resize(w.size() - 1);
         }
       }
@@ -294,11 +304,54 @@ void learning(const dfa& L) {
 
   std::cout << "Learning successful!" << std::endl;
   }
+
+void buildStackAutomaton(dfa& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
+ 
+  target.Q += w;
+  target.F += w;
+  
+  if(more) for(elem a: A) {
+    word w2 = concat(w, a);
+    buildStackAutomaton(target, A, etrash, epush, epop, w2, more-1);
+    target.delta += transition(w, elpair(epush, a), w2);
+    target.delta += transition(w2, elpair(epop, a), w);
+    for(elem b: A) If(a != b)
+      target.delta += transition(w2, elpair(epop, b), etrash);
+    }
+  else for(elem a: A) target.delta += transition(w, elpair(epush, a), etrash);
+  }
+  
+void buildQueueAutomaton(dfa& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
+ 
+  target.Q += w;
+  target.F += w;
+  
+  if(w.size() == 0) {
+    for(elem a: A) target.delta += transition(w, elpair(epop, a), etrash);
+    }
+  else {
+    word w2;
+    for(int i=1; i<(int) w.size(); i++) w2.push_back(w[i]);
+    target.delta += transition(w, elpair(epop, w[0]), w2);
+    for(elem a: A) If(a != w[0]) target.delta += transition(w, elpair(epop, a), etrash);
+    }
+  
+  if(more) for(elem a: A) {
+    word w2 = concat(w, a);
+    target.delta += transition(w, elpair(epush, a), w2);
+    buildQueueAutomaton(target, A, etrash, epush, epop, w2, more-1);
+    }
+  else for(elem a: A) target.delta += transition(w, elpair(epush, a), etrash);
+  }
   
 int main() {
   lasttime = getVa();
   initLois();
   // pushSolverDiagnostic("checking: ");
+
+//  solver = solverBasic() || solverIncremental("cvc4 --lang smt --incremental");
+//  solver = solverBasic() || solverIncremental("./z3 -smt2 -in");
+//  solver = solverBasic() || solverIncremental("./cvc4-new --lang smt --incremental");
 
   Domain dA("Atoms");
   lset A = dA.getSet();
@@ -311,54 +364,80 @@ int main() {
   
   // language L1 from the paper (repeated letter)
   
-/*
-  elem e0 = 0;
-  elem e1 = 1;
-  elem e2 = 2;
-  target.Q += e0;
-  target.Q += e1;
-  target.Q += e2;
-  for(auto a:A) target.Q += a;
-  target.F += e1;
-  target.I = e0;
-  for(auto a:A) target.delta += transition(e0, a, a);
-  for(auto a:A) target.delta += transition(a, a, e1);
-  for(auto a:A) for(auto b: A) If(a != b) target.delta += transition(a, b, e2);
-  for(auto a:A) target.delta += transition(e2, a, e2);
-*/
+  if(false) {
+    elem e0 = 0;
+    elem e1 = 1;
+    elem e2 = 2;
+    target.Q += e0;
+    target.Q += e1;
+    target.Q += e2;
+    for(auto a:A) target.Q += a;
+    target.F += e1;
+    target.I = e0;
+    for(auto a:A) target.delta += transition(e0, a, a);
+    for(auto a:A) target.delta += transition(a, a, e1);
+    for(auto a:A) for(auto b: A) If(a != b) target.delta += transition(a, b, e2);
+    for(auto a:A) target.delta += transition(e2, a, e2);
+    }
 
   // language L2 from the paper (repeated two letters: 'baba')
-
-  elem eini = 0;   // initial
-  elem etrash = 1; // trash
-  elem eaccept = 2; // accept
-  target.Q += eini;
-  target.Q += etrash;
-  target.Q += eaccept;
-  for(auto a: A) target.Q += a; // read one letter
-  for(auto a: A) for(auto b: A) target.Q += elpair(a,b); // read two letters
-  for(auto a: A) target.Q += elpair(a,eini); // read three letters, wait for 'a'
-  target.F += eaccept;
-  target.I = eini;
   
-  for(auto a: A) target.delta += transition(eini, a, a);
-  for(auto a: A) for(auto b: A)
-    target.delta += transition(a, b, elpair(a,b));
-  for(auto a: A) for(auto b: A)
-    target.delta += transition(elpair(a,b), a, elpair(b,eini));
-  for(auto a: A) for(auto b: A) for(auto c: A) If(a != c)
-    target.delta += transition(elpair(a,b), c, etrash);
-  for(auto a: A) 
-    target.delta += transition(elpair(a,eini), a, eaccept);
-  for(auto a: A) for(auto b: A) If(a != b)
-    target.delta += transition(elpair(a,eini), b, etrash);
-  for(auto a: A) target.delta += transition(etrash, a, etrash);
-  for(auto a: A) target.delta += transition(eaccept, a, etrash);
+  if(false) {
+    elem eini = 0;   // initial
+    elem etrash = 1; // trash
+    elem eaccept = 2; // accept
+    target.Q += eini;
+    target.Q += etrash;
+    target.Q += eaccept;
+    for(auto a: A) target.Q += a; // read one letter
+    for(auto a: A) for(auto b: A) target.Q += elpair(a,b); // read two letters
+    for(auto a: A) target.Q += elpair(a,eini); // read three letters, wait for 'a'
+    target.F += eaccept;
+    target.I = eini;
+    
+    for(auto a: A) target.delta += transition(eini, a, a);
+    for(auto a: A) for(auto b: A)
+      target.delta += transition(a, b, elpair(a,b));
+    for(auto a: A) for(auto b: A)
+      target.delta += transition(elpair(a,b), a, elpair(b,eini));
+    for(auto a: A) for(auto b: A) for(auto c: A) If(a != c)
+      target.delta += transition(elpair(a,b), c, etrash);
+    for(auto a: A) 
+      target.delta += transition(elpair(a,eini), a, eaccept);
+    for(auto a: A) for(auto b: A) If(a != b)
+      target.delta += transition(elpair(a,eini), b, etrash);
+    for(auto a: A) target.delta += transition(etrash, a, etrash);
+    for(auto a: A) target.delta += transition(eaccept, a, etrash);
+    }
   
+  if(false) {
+    int reps = 0;
+    elem etrash = 0;
+    elem epush = 1;
+    elem epop = 2;
+    sigma = newSet(epush, epop) * A;
+    target.Q += etrash;
+    target.I = word();
+    for(elem a: A) target.delta += transition(word(), elpair(epop, a), etrash);
+    
+    buildStackAutomaton(target, A, etrash, epush, epop, word(), 1);
+    }
+  
+  if(true) {
+    int reps = 0;
+    elem etrash = 0;
+    elem epush = 1;
+    elem epop = 2;
+    sigma = newSet(epush, epop) * A;
+    target.Q += etrash;
+    target.I = word();
+    
+    buildQueueAutomaton(target, A, etrash, epush, epop, word(), 3);
+    }
   
   lset allwords;
   
-  for(auto a:A) for(auto b: A) {
+  for(auto a: sigma) for(auto b: sigma) {
     word w;
     w.push_back(a);
     w.push_back(b);
@@ -369,7 +448,7 @@ int main() {
   
   allwords = newSet();
   
-  for(auto a:A) for(auto b: A) for(auto c: A) for(auto d: A) {
+  for(auto a: sigma) for(auto b: sigma) for(auto c: sigma) for(auto d: sigma) {
     word w;
     w.push_back(a);
     w.push_back(b);
