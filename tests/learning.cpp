@@ -96,7 +96,8 @@ struct dfa {
 
 lset sigma;
 
-lbool wordinlanguage_aux(word w, const dfa& a, int pos, lelem state) {
+lbool wordinlanguage_aux(word w, const dfa& a, int pos, const lelem& state) {
+  std::cout << "in state = " << state << " in " << emptycontext << std::endl;
   if(pos == w.size()) return memberof(state, a.F);
   elem c = w[pos];
   
@@ -110,6 +111,7 @@ lbool wordinlanguage_aux(word w, const dfa& a, int pos, lelem state) {
   }
 
 lbool wordinlanguage(word w, const dfa& a) {
+  std::cout << "Checking word: " << w  << " in " << emptycontext << std::endl;
   return wordinlanguage_aux(w, a, 0, a.I);
   }
 
@@ -183,14 +185,18 @@ void learning(const dfa& L) {
     std::cout << std::endl;  
 
     changed = false;
+    
+    std::cout << "Checking closedness..." << std::endl;    
 
     for(auto s: S) for(auto a: sigma) {
       lbool ok2 = false;
       for(auto t: S) {
         lbool ok = true;
-        for(auto e: E) 
+        for(auto e: E) {
+          std::cout << "s="<<s<<" t="<<t<<" a="<<a<<" e="<<e << std::endl;
           If(wordinlanguage(concat((s),a,(e)), L) ^ wordinlanguage(concat((t),(e)), L))
             ok = false;
+          }
         ok2 |= ok;
         }
       If(!ok2) {  
@@ -201,13 +207,15 @@ void learning(const dfa& L) {
         }
       }
     
-    for(auto s: S) for(auto t: S) {
+    std::cout << "Checking consistency..." << std::endl;    
+    
+    for(auto s: S) for(auto t: S) If(s != t) {
       lbool ok = true;
       for(auto e: E) If(wordinlanguage(concat((s),e), L) ^ wordinlanguage(concat((t),e), L))
         ok = false;
       If(ok) for(auto a: sigma) for(auto e: E)
         If(wordinlanguage(concat((s),a,(e)), L) ^ wordinlanguage(concat((t),a,(e)), L))
-          If(!memberof(concat(a,e), E)) {
+          /*If(!memberof(concat(a,e), E))*/ {
             std::cout << 
               "Not consistent. Adding to E: " << concat(a,e) << " for " << emptycontext
               << std::endl << std::endl;
@@ -432,7 +440,7 @@ int main() {
     target.Q += etrash;
     target.I = word();
     
-    buildQueueAutomaton(target, A, etrash, epush, epop, word(), 3);
+    buildQueueAutomaton(target, A, etrash, epush, epop, word(), 2);
     }
   
   lset allwords;
