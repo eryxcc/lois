@@ -71,6 +71,9 @@ out/tutorial.txt: bin/tutorial
 bin/learning: tests/learning.cpp bin/liblois.a
 	$(CC) -std=c++0x $(CFLAGS) tests/learning.cpp bin/liblois.a -o bin/learning
 
+bin/csp: tests/csp.cpp bin/liblois.a
+	$(CC) -std=c++0x $(CFLAGS) tests/csp.cpp bin/liblois.a -o bin/csp
+
 out/learning.txt: bin/learning
 	bin/learning > out/learning.txt
 
