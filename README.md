@@ -29,5 +29,7 @@ The subdirectory `out` contains output from the executables.
 
 The subdirectory `bin` contains generated binaries (both liblois.a and test executables).
 
-The subdirectory `manual` contains the LateX sources of the manual. Run
-`make manual/manual.pdf` to compile them.
+The subdirectory `manual` contains the LateX sources of the manual. 
+This manual should be up-to-date with the contents of the repository (and thus
+more up-to-date than the technical documentation on the LOIS webpage). 
+Run `make manual/manual.pdf` to compile them.
