@@ -341,14 +341,19 @@ struct Context {
   varlist var;
   // constructor and display
   Context(contextptr par, rbool fi) : parent(par), phi(fi) {}
-  std::ostream& display(std::ostream& os, contextptr upto);
   };
+
+std::ostream& displaycontext(std::ostream& os, contextptr what, contextptr upto);
 
 // display the varset difference, FROM (current) currentcontext TO (parameter) e
 // (for example, you should do "<< emptycontext" to view the whole current stack)
-
 inline std::ostream& operator << (std::ostream& os, contextptr e) { 
-  return currentcontext->display(os, e); 
+  return displaycontext(os, currentcontext, e); 
+  }
+
+// display the varset difference, FROM e2.first (e.g. currentcontext) TO e2.second (e.g. emptycontext)
+inline std::ostream& operator << (std::ostream& os, std::pair<contextptr, contextptr> e2) { 
+  return displaycontext(os, e2.first, e2.second); 
   }
 
 // lift the formula 'phi' from 'currentcontext' to 'anccontext' by applying all the

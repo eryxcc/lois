@@ -15,13 +15,13 @@ contextptr currentcontext = emptycontext;
 // (Note: environment always has a single parent, so it is only allowed to 
 // disable the last iterator/condition)
 
-std::ostream& Context::display(std::ostream& os, contextptr upto) {
-  if(this == &(*upto)) os << "|";
-  else if(this == NULL) throw env_exception();
+std::ostream& displaycontext(std::ostream& os, contextptr what, contextptr upto) {
+  if(what == upto) os << "|";
+  else if(what == emptycontext) throw env_exception();
   else {
-    for(auto w: var) os << "|" << w << sym.in << w->dom->name;
-    if(!phi.isTrue()) os << "|" << phi;
-    parent->display(os, upto);
+    for(auto w: what->var) os << "|" << w << sym.in << w->dom->name;
+    if(!what->phi.isTrue()) os << "|" << what->phi;
+    displaycontext(os, what->parent, upto);
     }
   return os;
   }
