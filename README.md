@@ -10,7 +10,7 @@ To effectively handle such sets, we use and implement SMT solvers for various fi
 order theories. LOIS has applications in education, and in verification of infinite
 state systems.
 
-See [http://www.mimuw.edu.pl/~erykk/lois/](the official homepage of LOIS) for more
+See [the official homepage of LOIS](http://www.mimuw.edu.pl/~erykk/lois/) for more
 information.
 
 # Subdirectories
