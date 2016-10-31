@@ -1,0 +1,228 @@
+\section{Syntax and features}\label{app_pseudo}
+In this appendix, we list the key constructions available in LOIS. 
+% Some of these constructions have
+% already appeared in Section~\ref{sec_tut}, but
+% we repeat them here for completeness and a more
+% structured presentation.
+Also, we 
+give an informal description of some constructs, 
+which is sufficient for understanding basic programs in LOIS
+on an intuitive level. This should not be confused with the formal semantics, which is given in 
+\cite{lois-sem}.
+
+\subsection{Types}
+LOIS allows the programmer to manipulate sets, which are represented by the type {\tt lset}.
+
+
+%The distinction between lvalues and rvalues is for technical reasons (see Section~\ref{sec_semantics}).
+
+ There is a polymorphic type {\tt elem} representing elements of sets, which should be used as the type of a control variable in a {\tt for} loop. 
+ The programmer can define set elements basing on any C++ type which has the following basic operations
+defined: variable substitution (create a copy with the variable changed),
+output (to a C++ stream),
+equality test, and checking whether it depends on a given variable
+(required for optimization). Integers, pairs (type {\tt elpair}), and tuples (type {\tt eltuple}) are based on the standard C++ types, and are defined as  {\tt int}, {\tt pair<elem, elem>} and {\tt vector<elem>}, respectively. 
+Terms are represented by the type {\tt term}.
+
+The type {\tt lelem} represents element of a set. 
+While {\tt elem} contain elements of a fixed type (e.g., a pair), {\tt lelem} 
+represents {\it piecewise elements}, whose type may depend on the variables
+in the context -- intuitively,
+their type may different in different pseudoparallel threads.
+They are described in detail in Section \ref{app_piecewise} below. Also, {\tt lnum<T>}
+is a wrapper for piecewise numbers -- they are described in
+Subsection \ref{app_piecewise_num} below.
+
+Finally, there are two types for representing booleans whose values may depend on
+variables in their current (inner) context, {\tt lbool} and {\tt rbool}. 
+Type {tt rbool} simply represents a formula, and {\tt lbool} has an inner context,
+allowing it to work according to the pseudoparallel semantics.
+
+\myparagraph{Conversions}
+There is an assignment operator for assigning a variable of type {\tt relem} to a 
+variable of type {\tt lelem}. Thanks to this and the C++ conversion mechanism, whenever
+a variable of type {\tt lelem} is used in place where a variable of type {\tt relem} is
+expected, an automatic conversion is performed by the compiler (and similarly for the
+other pairs of lvalue and rvalue types).
+To convert a {\tt relem e} to a {\tt elem}, \verb-for(elem x: newSet(e))- can be used.
+Also, pairs, tuples, terms, integers, and sets are automatically converted to {\tt elem}s.
+A variable {\tt x} of type {\tt elem} can be cast to a set, a pair, a tuple, a term, or an integer, using the operations {\tt asSet(x)}, {\tt as<elpair>(x)}, {\tt as<eltuple>(x)}, {\tt as<term>(x)}, and {\tt as<int>(x)}, respectively. It can be also tested whether {\tt x} is a pair, by the operation {\tt is<elpair>(x)} (and similarly for terms, tuples and integers) which returns a value of type {\tt bool}. 
+
+\myparagraph{Sets with type checking}
+The types \verb-lsetof<T>- is used instead of \verb-lset- 
+to create sets whose all elements are of type \verb-T- (typically, 
+\verb-term-, \verb-elpair-, \verb-eltuple-, \verb-lset-, \verb-int-, or \verb-lsetof<U>-). 
+This is a wrapper around \verb-lset- which allows only adding elements
+of type \verb-T-; moreover, the \verb-for- loop iterates over type \verb-T- instead
+of the polymorphic \verb-elem-. 
+% For example: \incc{setof}
+This improves readability and provides type checking.
+
+
+% \subsection{Syntax}
+
+\subsection{Flow control}
+LOIS has the following constructs constructs for flow control:
+\begin{itemize}
+\item The conditional {\tt If (cond) I}, where {\tt cond} is a condition of type {\tt rbool} and {\tt I} is an instruction (the body) which is to be executed if the condition is satisfied. There is also a variant 
+{\tt Ife (cond) I else J}, where the instruction~{\tt J} is to be executed if the condition fails. {\tt If} and {\tt While} are macros; they should be used with LOIS conditions, rather than the normal {\pcif} and {\while}.
+\item The looping construct {\tt While (cond) I}, where {\tt cond} and {\tt I} are as above.
+\item The \emph{hybrid pseudoparallel} looping construct {\tt for (elem x:X) I},
+where {\tt x} is the name of the introduced {control variable}, {\tt X} is the set (of type {\tt lset}) over which it ranges, and {\tt I} is an instruction (the body of the loop).
+\item The fully pseudoparallel looping can be achieved in LOIS using the construct
+{\tt for(relem e: fullypseudoparallel(X))}.
+\end{itemize}
+
+Furthermore, functions and recursion from C++ can be used. 
+Note that since the {\tt for} loop in LOIS is
+defined in a hybrid way \cite{lois-sem}, using the {\tt return}, {\tt break},
+or {\tt continue} statement inside a loop will cause LOIS to stop processing the
+set, and thus unintuitive behavior. The recommended approach is to create a value
+(say, {\tt lelem ret}) to represent the returned value, set its value in the loop,
+and then {\tt return ret}) after the loop ends.
+
+\subsection{Operations} 
+The basic operations on sets (\verb-lset-) are defined as follows. 
+In the list, we denote sets (\verb-lset-) with \verb-X- and \verb-Y-, elements 
+(\verb-lelem-) with \verb-x-, and set lvalues (\verb-lset-) as \verb-Z-.
+
+Note that the assignment and compound operators (\verb-= += |= &= &=~-)
+are defined according to the pseudo-parallel semantics \cite{lois-sem}. That means, for each
+valuation $v$ of the inner context of $Z$, the operation is performed on $Z_v$
+in parallel for each valuation $w$ of the current context which extends $v$.
+Also note that adding elements to a set is much more efficient than removing
+(which basically loops over the set and keeps only the elements which are not
+to be removed).
+
+\vskip 1em
+
+\begin{tabular}{ll}
+\verb-X==Y-&set equality \\
+\verb-X!=Y-&set inequality \\
+\verb-X&Y-&set intersection \\
+\verb-X&~Y-&set difference \\
+\verb-X|Y-&set union \\
+\verb-X*Y-&Cartesian product (\verb-elpair- used for the pairs)\\
+\verb-cartesian({X,Y,Z,...})-&Cartesian product (\verb-eltuple- used for the tuples)\\
+\verb-subseteq(X,Y)-&\verb-X- is a subset of \verb-Y- \\
+\verb-memberof(X,x)-&\verb-x- is an element of \verb-X- \\
+\verb-newSet()-&create an empty set\\
+\verb-newSet(x)-&create the set $\{\verb-x-\}$\\
+\verb-newSet(x,y)-&create the set $\{\verb-x-, \verb-y-\}$\\
+\verb-newSet({x,y,...})-&create a set with the given elements\\
+\verb-extract(X)-&extract the single element of a set\\
+\verb-Z=X-&set \verb-Z- to \verb-X-\\
+\verb-Z+=x-&add \verb-x- to the set \verb-Z-\\
+\verb|Z-=x|&remove \verb-x- from the set \verb-Z- \\
+\verb-Z|=X-&add all elements of \verb-X- to the set \verb-Z-\\
+\verb-Z&=X-&remove all elements of \verb-Z- which are not elements of \verb-X-\\
+\verb-Z&=~X-&remove all elements of \verb-Z- which are elements of \verb-X- \\
+\end{tabular}
+
+\subsection{The underlying structure}
+To create an infinite set, construct an object of the class {\tt Domain};
+this object's method {\tt getSet()} returns the underlying set, of type {\tt lset}.
+It is possible to create multiple domains.
+
+All domains are automatically equipped with equality ({\tt ==}, {\tt !=}) and 
+a dense total order, accessed with the usual operators {\tt <}, {\tt >}, {\tt <=}, {\tt >=}.
+
+LOIS supports domains which have more structure, for example, with two independent dense
+total orders. This is explained in detail later (Section \ref{sec:relations}).
+
+\subsection{Quantifier macros}
+LOIS defines macros \verb-FORALL-, \verb-EXISTS-, \verb-FILTER-, \verb-MAP-, 
+and \verb-FILTERMAP-, allowing
+the programmer to construct formulas with quantifiers, and sets, intuitively. 
+\verb-FILTER-$(x, A, \phi(x))$ corresponds to the mathematical set
+$\{x | x\in A, \phi(x)\}$, \verb-MAP-$(x, A, v(x))$ corresponds to
+$\{v(x) | x \in A\}$, and \verb-FILTERMAP-$(x, A, \phi(x), v(x))$ corresponds to
+$\{v(x) | x\in A, \phi(x)\}$. All these macros are defined 
+ using the for loop,
+and are therefore redundant in terms of expressive power.
+
+\subsection{Displaying the current context, and naming variables}
+The variable \verb-currentcontext- of type \verb-contextptr- contains a pointer
+to the current context on the stack, while \verb-emptycontext- is the pointer
+to an empty stack. (See \cite{lois-sem} for the discussion of contexts and stacks.)
+Use \verb-cout << c- to display the difference between the
+\verb-currentcontext- and \verb-c-. Thus, the following will display $\inco{displaycontext}$:
+
+\incc{displaycontext}
+
+Note how we have named the variables occuring in terms \verb-a- and \verb-b- 
+to $a$ and $b$ -- otherwise LOIS would not know how the programmer named them,
+so it would generate its own names, which would be probably some random letters
+instead of $a$ and $b$.
+
+Other functions working with contexts include {\tt branchset(contextptr anccontext)}
+(which returns the set of all pseudoparallel threads since {\tt anccontext}), and
+{\tt getorbit} (see {\tt loisextra.h}), which returns the orbit of a given element
+(see \cite{lois-sat}), treating the variables in the given ancestor context as fixed.
+
+\subsection{Declaring atoms and axioms}
+
+One can declare atoms and axioms, like in the following:
+\incc{declareatom}
+
+Create an object of type \verb-declareatom- to name one element of the domain.
+Create an object of type \verb-axiom- to add an axiom, for example, that the
+declared atoms are not equal (this is not given). This is implemented by
+pushing the respective variables and constraints on the stack. A careful reader
+will notice that the real effect is exactly the same as would be obtained by using
+\verb-for(a1,A) for(a2,A) If(a1!=a2)-. However, when the programmer wants simply to
+select some elements of $\bbA$, these constructs are more intuitive than loops and
+conditionals.
+
+
+% Thus, for example, the following outputs $\inco{quantifiers}$
+% (which is not simplified in this case, because we asked to output the formula, not
+% to evaluate it):
+%
+% \incc{quantifiers}
+%
+% And the following outputs $\inco{mapfilter}$:
+%
+% \incc{mapfilter}
+
+\subsection{Choosing the solver}
+The global variable {\tt solver} of type {\tt solveptr} describes the solver currently
+used by LOIS. The following solvers, or solver combinations, are available:
+
+\begin{itemize}
+\item {\tt solverCrash()} which cannot solve anything (it just crashes).
+\item {\tt solverBasic()} which can solve only the trivial cases.
+\item {\tt solverExhaustive(int t, bool v)} calls the internal solver. The number 
+{\tt t} corresponds to the number of tries (possible valuations) after which the
+internal solver gives up, and {\tt v} is the verbosity.
+\item {\tt solverSMT()}, {\tt solverCVC()} and {\tt solverSPASS()} call the given
+external solver. They accept an optional {\tt std::string} argument, which is the path to the solver
+executable.
+\item {\tt solverIncremental(std::string)} uses Z3's incremental solving feature.
+\item {\tt solverCompare(std::initializer\_list<solveptr> p)} compares the results of two or more solvers,
+and checks for inconsistencies.
+\item {\tt solverVerbose} and {\tt solverNamed(std::string n, solveptr s)} are wrappers 
+around solvers which provide extra diagnostic information.
+\item {\tt solverStack(solveptr s, solveptr fallback)} calls the solver {\tt s},
+then calls {\tt fallback} if it failed. It can be used, for example, to solve simple cases with the
+basic or exhaustive solver, then proceed to verbose exhaustive or external solver for
+the harder cases.
+\end{itemize}
+
+Call {\tt useDefaultSolver(int i, int j)} to use the default solver (queries with
+complexity below $i$ are solved in a non-verbose way, then they are solved in a verbose
+way, and the internal solver gives up at $j$ tries; also $j$ is used as the limit for
+the number of tries for the simplification algorithm).
+
+\subsection{Other functions}
+Some other functions include:
+\begin{itemize}
+\item {\tt lset optimize(const lset& x)}, which optimizes the set by removing repetitions
+(each element in the returned set will be in exactly one set-builder expression).
+\item {\tt lset optimizeType(const lset& x, const lset& type)}, which is a more efficient version of
+{\tt optimize} for the case when we know that {\tt x} is a subset of a (simple) set
+{\tt type}.
+\item {\tt getsingletonset(const lset& X)}, which returns the set of singletons of elements of X,
+represented as a single set-builder expression.
+
+\end{itemize}

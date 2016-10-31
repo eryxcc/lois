@@ -52,7 +52,6 @@ bin/orbtest: tests/orbtest.cpp bin/liblois.a
 bin/pushdown: tests/pushdown.cpp bin/liblois.a
 	$(CC) -std=c++0x $(CFLAGS) tests/pushdown.cpp -o bin/pushdown bin/liblois.a
 
-
 bin/soltest: tests/soltest.cpp bin/liblois.a
 	$(CC) -std=c++0x $(CFLAGS) tests/soltest.cpp -o bin/soltest bin/liblois.a
 
@@ -76,6 +75,15 @@ bin/csp: tests/csp.cpp bin/liblois.a
 
 out/learning.txt: bin/learning
 	bin/learning > out/learning.txt
+
+bin/parsetutorial: manual/parsetutorial.cpp
+	g++ -std=c++0x -O3 manual/parsetutorial.cpp -o bin/parsetutorial
+
+manual/snippets/ok: bin/parsetutorial out/tutorial.txt
+	bin/parsetutorial out/tutorial.txt tests/tutorial.cpp
+
+manual/manual.pdf: manual/manual.tex manual/tech-intro.tex manual/syntax.tex manual/safety.tex manual/relations.tex manual/piecewise.tex manual/overview.tex manual/contents.tex manual/lois.bib manual/snippets/ok manual/tutorial.tex
+	cd manual; pdflatex manual; bibtex manual; pdflatex manual; pdflatex manual
 
 
 export: lois.tgz

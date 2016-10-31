@@ -1,0 +1,180 @@
+\vspace{-1em}
+\section{Tutorial}\label{sec_tut}
+
+\subsection{Installation}
+
+
+The current development snapshot of LOIS can be downloaded from GitHub.
+LOIS webpage \url{http://www.mimuw.edu.pl/~erykk/lois/} contains the prototype
+of LOIS. Note that this prototype is slightly outdated -- this manual
+documents the version in development.
+
+LOIS can be installed as follows:
+
+\begin{itemize}
+\item You need {\tt gcc} (supporting the C++11 standard), and {\tt make}. Those are very standard tools under Unix-like environments.
+\item To try the development snapshot, you need {\tt git}.
+Clone the git repository: \\ {\tt git clone https://github.com/eryxcc/lois}
+\item To try the prototype instead, you also need {\tt tar}. Download {\tt lois.tgz} and do: {\tt tar zxf lois.tgz}
+\item Enter the lois directory created: \\ {\tt cd lois}
+\item Run make: {\tt make}
+\end{itemize}
+
+The LOIS library is created at {\tt bin/liblois.a}. The headers are 
+{\tt include/lois*.h}. We assume that the reader is familiar with the basics
+of programming in C++.
+
+\subsection{Writing with LOIS}
+
+We start with some examples of 
+simple statements using LOIS (left), 
+and their explanations (right). 
+The key constructs and features are emphasized in the text.
+%A more formal presentation of the syntax is deferred to Appendix~\ref{app_pseudo},
+%due to lack of space.
+
+\begin{codecommenttable}
+\codecommentrow{initialization}{
+To use LOIS, we need to include the appropriate file. LOIS types are in the namespace 
+{\tt lois}.
+}
+\end{codecommenttable}
+
+\begin{codecommenttable}
+
+\codecommentrow{main}
+  {\textbf{Initialize} LOIS. Sets can be output in ASCII
+  (portable), Unicode (useful for testing) or in the \LaTeX\ markup, which we use in this paper.}
+
+\\ \codecommentrow{domain}
+  {Create an infinite \textbf{domain}, named $\bbA$.
+  The variable {\tt A} stores its underlying set $A$.
+  This outputs $\inco{domain}$.}
+	
+\\ \codecommentrow{resetX}
+    {Create a \textbf{set}~$X$, and set it to $A$.
+		 The type {\tt lset} is 
+    the type of a set; {\tt l} signifies that we will use it as an lvalue, that is, change its contents.
+		Sets can store elements of various types. We \textbf{add} the number $5$ to $X$.
+    This outputs $\inco{resetX}$, a shorthand 
+		for $\set{b|b\in\bbA}\cup\set5$.}
+		
+		
+\\ \codecommentrow{pairs}{
+	The set {\tt Pairs} is a \textbf{typed set},
+	whose elements are of the type {\tt elpair},
+	denoting pairs; initially it is empty.
+	\textbf{Iterate} over all pairs of elements of $A$,
+and construct the set of all ordered \textbf{pairs}.
+The output
+is $\inco{pairs}$.}		
+
+\\ \codecommentrow{linear}{
+	By default,
+		$\bbA$ is equipped with a \textbf{linear order}~$\le$,
+	isomorphic to the rational numbers. 
+We test that the order is transitive,
+by setting a \textbf{boolean} flag of type {\tt lbool}
+whenever a counterexample is found. 
+ Note that we use a special \textbf{conditional} {\tt If} with LOIS, actually a macro.
+This outputs \emph{\inco{linear}}.}
+
+% \\ \codecommentrow{set3}{
+% As in mathematics, we can  \textbf{iterate} through sets
+% constructed previously, and execute
+% \textbf{functions}  inside the loop.
+% To apply the {\tt interval} function (defined below),
+% we \textbf{cast} the two elements of the pair to the type {\tt term}, representing elements of a domain.
+% % Finally, infinite sets can be \textbf{nested}.
+% We construct the set of all open intervals in $\bbA$.
+% % Note that we use a special LOIS conditional \verb-If-
+% % for working with LOIS~types.
+% The result is $\inco{set3}$.}
+
+% \\ \codecommentrow{interval}{
+%   % The \emph{interval} function is defined outside
+%   %  the body of the main function.
+%    Function arguments and  return values are \textbf{rvalues},
+%     for sets this is signified by the letter {\tt r}
+%    in the type {\tt rset}.
+%    {\tt FILTER} is a macro for
+% \textbf{selecting} a subset with a given property;
+% here -- the open interval in $A$ with endpoints $a,b$.}
+\end{codecommenttable}
+
+
+
+Now we demonstrate an algorithm 
+manipulating on infinite sets, namely the reachability 
+algorithm for infinite graphs. Reachability is very important
+for applications of LOIS~\cite{lois-sat}.
+%, which was used in Example~\ref{ex:minimal}. 
+%This has applications
+%in verification, which we discuss in Section~\ref{sec_applications}.
+
+\begin{codecommenttable}	
+\codecommentrow{graph}{
+	First, let's define some infinite directed graph.
+	In this case, the vertices are pairs of elements of $A$,
+	and the edgeset is $E$.
+	This outputs~$\inco{graph}$.
+	Therefore, edges are of the form $(p,q)\rightarrow (q,r)$,
+	where $p\neq r$.
+}
+
+% \\ \codecommentrow{declareatom}{
+%   We \textbf{declare} $a,b$ to be elements of $\bbA$,
+%   and \textbf{assert} they are distinct. We want to determine whether $t=(b,a)$
+%   is reachable from $s=(a,b)$ in the graph defined by $E$.
+% }
+
+\\ \codecommentrow{test_reach}{
+For each pair $(a,b)$ of distinct elements of $A$,
+	we test reachability of $(b,a)$ from $(a,b)$ in our graph,
+  using the function $\tt reach$ given below
+  (and defined outside of the body
+  of the main function).
+  Note that we use \textbf{local variables} $s$ and $t$.
+  % The flag $\tt reached$ is of type $\tt lbool$,
+  % which is the type used for (lvalue) \textbf{booleans} in LOIS.
+  The output is~$\inco{test_reach}$.
+An example (shortest) path
+	is $(a,b)\rightarrow (b,c)\rightarrow (c,d) \rightarrow(d,b)\rightarrow (b,a)$,
+	where $c,d$ are distinct from $a,b$.}
+
+\\ \codecommentrow{reachability}{
+	We use a \textbf{fixpoint algorithm} to 
+  compute the vertices reachable from $S$ in a graph with edgeset $E$.
+  Special  \textbf{while loops} are used with LOIS conditionals
+  (again, macros). 
+	Correctness of this algorithm is clear.
+  One could also use a BFS traversal,
+  however, the presented algorithm is slightly easier to analyse.
+   Termination (in finite time) can be proved for 	 
+   \emph{any} graph
+	defined in LOIS from the domain $\bbA$,
+  using equality only \cite{lois-sat}.
+%(see Section~\ref{sec_applications}).
+}
+
+
+\end{codecommenttable}
+\vspace{-1em}\noindent
+The intuitive semantics of the above examples is clear,
+as they follow closely the set-builder notation -- we iterate through
+some set and collect the results in some resulting set
+(an exception the use of the boolean flag).
+In general, our novel \emph{pseudo-parallel} semantics 
+is meaningful also when  other operations are performed 
+inside the loops, e.g. removing elements from a set, 
+or declaring local variables
+within the body of the loop. This requires extending the set-builder intuitions, and defining a proper semantics 
+\cite{lois-sem}.
+
+% Here is an even less intuitive example.
+%
+% \\ \codecommentrow{count}
+% 	What should the result of this loop be?
+% 	The output is $\inco{count}$.
+% }
+

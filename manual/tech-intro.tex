@@ -1,0 +1,46 @@
+\vspace{-2em}
+\section{Introduction}\label{sec_intro}
+
+LOIS (Looping Over Infinite Sets) is a C++ library which allows working on 
+\emph{definable} infinite sets in a natural way. We can create an infinite
+\emph{domain}, let's say $\bbA$, possibly with some relational and functional symbols, 
+and then use the \emph{pseudo-parallel} semantics to iterate over it in a natural way. 
+This gives us new sets, for example $\{(x,y): x \in \bbA, y \in \bbA, x \neq y\}$,
+which can be iterated over in turn, or checked for emptiness. A LOIS program will
+work in finite time as long as the first order theory of $\bbA$ is decidable.
+LOIS is open source, released under MIT license.
+
+Its homepage is at
+{\tt http://www.mimuw.edu.pl/\textasciitilde erykk/lois/},
+and its GitHub repository is at
+{\tt https://www.github.com/eryxcc/lois}.
+
+
+This document is a technical description of LOIS, and thus, many theoretical details
+have been omitted. See the papers on the website above for details about:
+
+\begin{itemize}
+\item the theoretical foundations: definable sets, homogeneous structures, \cite{lois-sat}
+\item how the solvers (built-in, CVC4, Z3, SPASS) are used to make the computation
+possible, \cite{lois-sat}
+\item the results of our tests of internal and external solvers, \cite{lois-sat}
+\item applications, \cite{lois-sat}
+\item the novel pseudoparallel semantics which LOIS is using to handle the infinite sets.
+\cite{lois-sem}
+\end{itemize}
+
+Note that, in the current prototype, all the core functionality works, but in case of
+some functions, variants which accept more complex types (say, {\tt lnumof<T>} or {\tt
+lsetof<T>} instead of the basic {\tt elem} or {\tt lset}) may be still missing,
+or some obvious type casting might be missing, making C++ unable to guess
+what typecasts should be used.
+Usually
+such more complex variants should be easy to write.
+
+LOIS has been tested on machines with the following configurations:
+\begin{itemize}
+\item gcc version 4.4.3, architecture i686, Ubuntu Linux
+\item gcc version 4.6.3, architecture x86\_64, Ubuntu Linux
+\item gcc version 4.7.3, architecture x86\_64, PLD Linux
+\end{itemize}
+

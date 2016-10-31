@@ -1,0 +1,107 @@
+\section{Overview}\label{sec:overview}
+This section gives an overview on the main features of LOIS, and
+how they have been implemented, and how to use them. More details
+will be given in the further sections.
+
+\def\lzWhile{{\mbox{\bf while}}\xspace}
+\def\lzFor{{\mbox{\bf for}}\xspace}
+\def\lzSet{{\mbox{\bf set}}\xspace}
+\def\lzInt{{\mbox{\bf int}}\xspace}
+\def\lzIn{{\mbox{\bf in}}\xspace}
+\def\lzBool{{\mbox{\bf bool}}\xspace}
+\def\lzIf{{\mbox{\bf if}}\xspace}
+
+LOIS is based on the hybrid pseudoparallel semantics. The paper
+\cite{lois-sem} explains this semantics in detail, and how an
+interpreter can be implemented in practice by using \emph{contexts},
+which form a stack which changes whenever a local variable is created (possibly by a
+\verb-for- loop), or a conditional is used. 
+C++ allows a programming technique known as RAII, that is,
+automatic initialization and finalization of variables when
+a local variable enters or exits the scope. This is exactly
+what we need -- our implementation
+uses RAII to change the contents of the LOIS stack when \lzIf,
+\lzFor, and \lzWhile\ constructs are used.
+%For technical reasons, the syntax of our C++ library is a bit
+%different than one presented in Section \ref{sec_semantics}.
+Note that, since \lzIf\ and \lzWhile\ change the current context,
+we were unable to use C++'s \verb-if- and \verb-while- statements directly
+-- instead, \verb-If- and \verb-While- macros are used, and
+\verb-Ife- for if-then-else.
+
+The type \verb|lset| represents a LOIS set together with its
+inner context, and the polymorphic type \verb|elem| represents
+a v-element. V-elements can represent 
+an integer (type \verb-int-), a term over $\calA$
+(type \verb-term-), a pair (type \verb-elpair-), a tuple (type \verb-eltuple-), or a set (type \verb-lset-). Integers, pairs, and tuples are implemented with the corresponding standard C++ types
+(\verb|int|, \verb|std::pair| and \verb|std::vector|, respectively); 
+and more types can be added by the programmer.
+So the programmer can for instance extend 
+\verb|elem| to allow a type 
+representing lists or trees of elements,
+thus allowing sets of type \verb|lset| to store infinite
+sets of lists or trees.
+It is well known that integers, pairs and tuples can be encoded in 
+the set theory (using Kuratowski's definition of pair, for example);
+however, allowing to use them directly in our programs greatly improves
+both readability and efficiency.
+
+Hybrid pseudoparallel
+looping over a set $X$ of type \verb|lset| is done with \verb|for(elem x:X)|.
+This is implemented using the C++11 range-based loop. We can
+check the specific type of \verb|x|, as well as inspect its
+components, with functions such as \verb|is<T>|, \verb|as<T>|
+(where \verb-T- is one of the types listed above) and \verb|isSet|, \verb|asSet|.
+The syntactic sugar \verb|lsetof<T>| is provided for defining sets which
+can only include elements of one specific type \verb-T- -- this
+allows static type checking, and eliminates the necessity
+of using \verb|is| and \verb|as| functions.
+
+In some cases, such low-level representation of elements is
+not enough: for example, consider the function \verb|extract(X)|
+which returns the only element of a set $X$ of cardinality 1.
+If $X = \{a | a=b\} \cup \{0 | a \neq b\}$, then it is not
+possible to represent \verb|extract(X)| as \verb|elem|
+in the context $\{a \in \bbA, b \in \bbA\}$, since
+each \verb|elem| has to be of specific type, and in our case,
+\verb|extract(X)| can be either a term or an integer.
+In this case, we can use the type \verb|lelem|, which represents
+\emph{piecewise v-elements} (see Section \ref{app_piecewise}) -- that is, ones which may have
+different representations depending on the constraints satisfied
+by variables in the context. Internally,
+this type is represented with a set -- thus, 
+\verb|extract(X)| simply wraps the set $X$ into a piecewise
+element. Type \verb|lbool| represent a piecewise boolean variable,
+which boils down to a formula with free variables from its inner
+context.
+
+All the conditions appearing in \verb|If| and \verb|While|
+statements are evaluated into first-order formulas over the underlying structure~$\calA$. A solver is used to check whether the set of all
+constraints on the stack is satisfiable (and thus whether
+to execute a statement or not). Also, a method of simplifying
+formulas is necessary, to obtain legible presentations of
+results, and to make the execution of the sequel of the program
+more effective.
+
+The membership function \verb|memberof(X,Y)|, as well as set equality \verb|X==Y| and
+inclusion \verb|subseteq(X,Y)|, have been implemented straightforwardly using
+\verb|lbool| and hybrid pseudoparallel iteration over the sets
+involved. They are defined with a mutual recursion -- set equality is
+a conjunction of two set inclusions, set inclusion $X \subseteq Y$ is
+evaluated by looping over all elements of $X$ and checking whether
+they are members of $Y$, and membership $x \in Y$ is evaluated by
+looping over all elements of $Y$ and checking whether they are
+equal to $x$. Equality and relation symbols applied 
+to terms result in first order formulas.
+
+\def\LOISzero{LOIS${}^0$\xspace}
+
+To enforce
+fully pseudoparallel computation, thus simulating \LOISzero from
+\cite{lois-sem}, write \[\verb|for(relem e: fullypseudoparallel(X))|.\]
+
+The underlying structure $\calA$ is not given at the start of the program;
+instead, it is possible to define new sorts and new relations during the
+execution. Our prototype includes several relations with decidable
+theories (order, random partition, random graph, homogeneous tree), as well as solvers for these theories.
+Also, it allows consulting external SMT solvers.

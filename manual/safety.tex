@@ -1,0 +1,91 @@
+% \section{Prover details}
+%
+% We have been trying to use external provers for these problems.
+% The current prototype is able to export queries (empty theory only) to a
+% smtlib-compliant SMT solver; it is not able to apply simplification tactics yet.
+% We have tried using Yices \cite{yices}, CVC3 \cite{cvc3}, and Z3 \cite{z3},
+% but our experiments so far did not yield satisfactory results:
+% it seems that SMT solvers are not optimized for the kinds of formulas which are
+% naturally generated
+% by LOIS programs (first order formulas with many quantifiers), although this could
+% be also caused by our lack of experience with SMT solvers.
+% There are also first order provers based on the supposition calculus, such
+% as SPASS \cite{spass}; however, SPASS did not yield satisfactory results either,
+% and it does not seem to solve the problem of simplification.
+% Another potential approach is to use QBF solvers -- but transforming a first order formula to QBF
+% requires some work, and this does not solve the problem of simplification either.
+%
+% Instead, LOIS currently implements several simple techniques for simplification
+% of formulas (eliminate quantifier when the value is known, eliminate repeating
+% subformulas, etc.), and checks satisfiability by looping over all the possible
+% assignments of variables, using the algorithm explained in Section
+% \ref{sec_symbols}
+% (with some optimizations --- that is, if the set of variables can
+% be split into two subsets $V_1$ and $V_2$ such that we never compare variables
+% in $V_1$ to variables in $V_2$, thet set of possible assignments is generated
+% independently in $V_1$ and $V_2$ --- and relation is not generated for $V_i$
+% if it is never used in this set). This is also occassionally done to simplify formulas (all the
+% possible valuations are checked, and subformulas are replaced with {\tt true}
+% or {\tt false} if a given subformula was always given the same result).
+%
+
+\section{Safety of programming}\label{subsecsafety}
+
+It is possible to create a LOIS program which compiles and terminates without
+a run-time exception, but nonetheless works incorrectly; for example, 
+the following function will count the cardinality of the set incorrectly,
+due to using the type \verb-int- instead of the piecewise integer \verb-lnum<int>-.
+
+\incc{cardinalitybad}
+
+Of course, this problem cannot be completely solved---it is possible to create an
+incorrect C++ program even without LOIS.
+However, the programmer should be mostly safe, if they observe the following
+rules.
+
+\begin{itemize}
+\item The lvalue types ({\tt lbool}, {\tt lset}, {\tt lnum}, etc.) are used
+for all the local (and global) variables, except the iterators for looping over
+sets and 
+\verb-setof<T>-'s, for which
+\verb-elem- and \verb-T- (or \verb-auto-) are used respectively, and temporary values
+(function
+parameters, function return values), for which rvalue types may (and should) be used.
+The difference between lvalue and rvalue types is technical---to handle
+assignments and other changes correctly, lvalue types require extra
+information (the inner context), while rvalue types do not.
+We have decided to use two distinct types---the rationale is that 
+a lvalue variable should correspond to a specific stack (context), and the stack
+changes during a function call or return;
+%(this rationale is not very
+%strong, though, since only $V_S$ is important---not the whole stack---and
+%$V_S$ does not change during function calls and returns)
+also avoiding this
+extra information could improve the efficiency.
+Assigning a rvalue to a lvalue (or, in general, modifying a lvalue in any way
+which takes a rvalue as a parameter) is legal only if the rvalue does not
+depend on the sort variables which have been introduced since the
+lvalue was created. Thus, the following implementation of
+{\tt max} would throw an exception for some sets $X$:
+\incc{maxbad}
+
+\item Non-structural programming constructs, such as {\tt continue},
+{\tt break}, {\tt return}, and {\tt goto} are considered harmful and
+should be avoided. Suppose a function is called with the current context $C$,
+then new constaints are pushed on the stack, changing the current context
+to $C'$. Now, the {\tt return} statement is used. This will break the execution flow
+not only for all the $C'$-valuations, but actually 
+for all the $C$-valuations, irregardless of whether they are $C'$-valuations
+or not (the necessary condition for executing 
+the return statement is that $\val{C'}$ is non-empty).
+Moreover, {\tt If} statements could execute both branches, and they are
+internally implemented with a {\tt for} loop, which might make
+the behavior of {\tt continue} and {\tt break} different than expected.
+Thus, the only way of using the {\tt return} statement which is not considered
+harmful is to  declare a local lvalue as the first statement (before any loops), 
+modify it in the body of the function,
+and then return its value as the last statement of the function.
+Note that this approach is similar to the one used in original Pascal.
+\end{itemize}
+
+

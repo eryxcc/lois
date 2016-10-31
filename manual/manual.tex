@@ -1,0 +1,287 @@
+\documentclass[a4paper]{article}
+% \documentclass[a4paper,USenglish]{lipics}
+%\usepackage[latin2]{inputenc}
+
+%\def\dblind#1{#1}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+%\usepackage{comment}
+%\usepackage{enumitem}
+%\usepackage{tcolorbox}
+%\usepackage{graphicx}
+
+%\usepackage{cutwin}
+
+
+\usepackage{color}
+\usepackage{colortbl}
+\usepackage{longtable}
+\usepackage{hyperref}
+
+\usepackage{listings}
+
+\usepackage{wasysym}
+%\usepackage{lipicsfix}
+\usepackage{xspace}
+%\usepackage{wrapfig}
+
+%\usepackage{algorithm2e}
+
+\def\fraisse{Fraiss\'e\xspace}
+\def\stack{{{\textit{Current}}}}
+\def\bra#1{{$\langle$\tt #1$\rangle$}}
+\def\set#1{\{#1\}}
+\def\pseudo{{\pluto}}
+\def\com#1{\qquad//{\emph{#1}}}
+
+\def\function{{\mbox{\bf function}}}
+\def\for{{\mbox{\bf for}}}
+\def\while{{\mbox{\bf while}}}
+\def\pcif{{\mbox{\bf if}}}
+\def\pcreturn{{\mbox{\bf return}}}
+\def\pcor{{\mbox{ \bf or }}}
+\def\pcand{{\mbox{ \bf and }}}
+\def\pctrue{{\mbox{\bf true}}}
+\def\pcfalse{{\mbox{\bf false}}}
+\def\addel{{\mbox{{\tt +=}}}}
+\def\remel{{\mbox{{\tt -=}}}}
+\def\i{\hskip 3em}
+\def\val#1{{\mbox{Val}(#1)}}
+% \def\varext#1#2{{{{\mbox{Val}}_{#1}}(#2)}}
+\def\Var{{\mathcal V}}
+\newcommand{\st}{\ |\ }
+% \DeclareMathOperator{\constr}{Definaormulas 
+\definecolor{mygreen}{rgb}{0,0.6,0}
+ \definecolor{mygray}{rgb}{0.5,0.5,0.5}
+ \definecolor{mymauve}{rgb}{0.58,0,0.82}
+\definecolor{mygray}{rgb}{0.95,0.95,0.95}
+
+% \mainmatter              % start of the contributions
+%
+\title{LOIS: technical documentation}
+%
+%\titlerunning{LOIS: technical documentation}  % abbreviated title (for running head)
+%                                     also used for the TOC unless
+%                                     \toctitle is used
+%
+\author{Eryk Kopczy\'nski \and Szymon Toru\'nczyk}
+%\authorrunning{\dblind{Eryk Kopczy\'nski and Szymon Toru\'nczyk}} % abbreviated author list (for running head)
+
+%%% list of authors for the TOC (use if author list has to be modified)
+%\tocauthor{\dblind{Eryk Kopczy\'nski, Szymon Toru\'nczyk}}
+
+%\dblind{University of Warsaw, Poland}\\
+% \dblind{\email{\{erykk,szymtor\}@mimuw.edu.pl}}
+
+
+
+
+% \author{Eryk~Kopczy\'nski}%\thanks{Supported by ?}}
+% \author{Szymon~Toru\'nczyk}%\thanks{Supported by ?}}
+%
+% \affil{University of Warsaw\\
+%   \texttt{\{erykk,szymtor\}@mimuw.edu.pl}}
+%
+%
+% %\institute{Institute of Informatics, University of Warsaw\\
+% %  \texttt{erykk@mimuw.edu.pl}
+% %}
+%
+% %\title{LOIS: a Practical C++ Library for Handling Infinite Sets}
+% \title{LOIS: Handling Infinite Sets in Theory and Practice}
+
+% the basic fields:
+\def\bbA{{\mathbb A}} % arbitrary universe
+\def\bbB{{\mathbb B}} % sub-universe
+\def\bbN{{\mathbb N}} % integer numbers
+ \def\bbZ{{\mathbb Z}} % integer numbers
+\def\bbQ{{\mathbb Q}} % rational numbers
+\def\bbP{{\mathbb P}} % non-negative real numbers
+\def\bbR{{\mathbb R}} % real numbers
+\def\bbF{{\mathbb F}} % any field
+\def\calA{{\mathcal A}}
+\def\calB{{\mathcal B}}
+\def\calC{{\mathcal C}}
+\def\calF{{\mathcal F}}
+\def\calZ{{\mathcal Z}}
+\def\calQ{{\mathcal Q}}
+ \def\calR{{\mathcal R}}
+\def\rado{{\mathcal G}}
+\def\calT{{\mathcal T}}
+\def\aut#1{{\mathrm Aut(#1)}}
+
+\def\myparagraph#1{\smallskip{\noindent\bf #1.}}
+\newcounter{mycount}[section]
+\renewcommand{\themycount}{\thesection.\arabic{mycount}}
+
+%\newtheorem{theorem}[mycount]{Theorem}
+%\newtheorem{lemma}[mycount]{Lemma}
+%\newtheorem{definition}[mycount]{Definition}
+% \newtheorem{proposition}[mycount]{Proposition}
+%\newtheorem{remark}[mycount]{Remark}
+
+% \theoremstyle{plain}
+
+\newenvironment{runex}
+{\smallskip\noindent\begin{lrbox}{0}%
+\begin{minipage}{\textwidth}%
+}
+{\end{minipage}\end{lrbox}\colorbox{mygray}{\noindent\usebox{0}}\smallskip}
+
+% \newenvironment{runex}
+% {
+% % \noindent\rule{\textwidth}{0.4pt}\\
+% \colorbox{mygray}
+% \begingroup\small\emph{Running example.}
+% }
+% {\endgroup\\
+% % \noindent\rule{\textwidth}{0.4pt}
+% }
+
+% \newenvironment{runex}
+% {}
+% {}
+ 
+% \newenvironment{runex}
+% {\begin{tcolorbox}[oversize, colframe = mygray,  colback  = mygray]}
+% {\end{tcolorbox}}
+
+
+% \newtcolorbox{runex}
+% {
+%   colframe = mygray,
+%   colback  = mygray,
+% 	oversize
+%   % coltitle = black,
+%   % title    = Running example,
+% }
+
+
+%\newtheorem{problem}[mycount]{Problem}
+%\newtheorem{warunek}[mycount]{Condition}
+%\newtheorem{corol}[mycount]{Corollary}
+
+\lstdefinestyle{customc}{
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+% frame=L,
+  xleftmargin=\parindent,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\scriptsize\ttfamily,
+  keywordstyle={\bf},
+  commentstyle=\itshape
+% identifierstyle=\color{blue},
+% stringstyle=\color{red},
+}
+\lstset{language=C++,style=customc}
+
+%\newenvironment{proof}[1][]%
+%{\medskip{\bf Proof #1 }}%
+%{}
+%\def\qed{\hfill$\rule{2mm}{2mm}$\par\medskip}
+
+\def\inctut#1{
+\begin{wrapfigure}{l}{0.6\textwidth}
+  \begin{center}
+\lstinputlisting{snippets/snippet-#1}
+\end{center}
+\end{wrapfigure}}
+\def\incc#1{\vspace{-0em}\lstinputlisting{snippets/snippet-#1}\vspace{-0em}}
+\def\inco#1{\input{snippets/output-#1}\unskip}
+\def\pspace{\textsc{PSpace}}
+\def\ptime{\textsc{PTime}}
+% \newenvironment{codecomment}[1]
+% {\noindent\fcolorbox{black}{mygray}{\begin{minipage}{0.4\textwidth}\incc{#1}\end{minipage}}
+% \begin{minipage}{0.6\textwidth}
+% }
+% {\end{minipage}}
+% \newenvironment{codecomment}[1]
+% {\noindent\begin{tabular}{p{0.4\textwidth}|@{\ }p{0.6\textwidth}}%
+%  % \incc{#1}&%
+% \fcolorbox{cyan}{yellow}{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{\incc{#1}}}&
+% {\renewcommand{\arraystretch}{1.3}%
+\newenvironment{codecommenttable}
+{\begin{longtable}{>{\columncolor[gray]{0.95}}p{0.4\textwidth}@{\ \ }p{0.6\textwidth}}%
+}
+{\end{longtable}}
+
+\newtheorem{example}{Example}
+
+\newcommand{\codecommentrow}[2]
+{
+	% \fcolorbox{white}{white}
+		{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{%
+		% \lstset{aboveskip=-1em,belowskip=-1.5em}%
+		\incc{#1}}}
+		&%
+	% \fcolorbox{white}{white}%
+	{%
+		\parbox%
+		{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}%
+		{\vspace{-0.em}#2\vspace{-0.em}}%
+	}
+}
+
+
+
+
+% \newenvironment{codecomment}[1]
+% {\begin{codecommenttable}
+% 	\codecommentrow{#1}\bgroup
+% }
+% {\egroup
+% \end{codecommenttable}
+% }
+
+\begin{document}
+ 
+\maketitle
+
+\begin{abstract}
+LOIS is a C++ library allowing iterating through certain infinite sets, in finite time.
+The resulting language has an intuitive semantics,
+corresponding to execution of infinitely 
+many threads in parallel.
+This allows to merge the power of abstract mathematical constructions 
+into imperative programming.
+Infinite sets are internally represented 
+using first order formulas over some underlying logical structure. 
+To effectively handle such sets, we use and implement SMT solvers for various first order
+theories. LOIS has applications in education, and in verification of infinite state systems.
+
+This is a technical documentation of LOIS, describing how to write programs using it.
+\end{abstract}
+
+% \keywords{infinite sets, automata theory, sets with atoms, pseudo-variables, pseudo-parallel computation}
+
+%\setcounter{tocdepth}{2}
+%\makeatletter
+%\newcommand*{\toccontents}{\@starttoc{toc}}
+%\renewcommand*\l@author[2]{} \renewcommand*\l@title[2]{}
+%\def\authcount#1{}
+%\makeatother
+%\toccontents
+%\newpage
+
+\input{tech-intro}
+\input{tutorial}
+\input{overview}
+
+\input{syntax}
+\input{relations}
+\input{piecewise}
+\input{safety}
+
+\input{contents}
+
+\def\whereislois{See \url{http://www.mimuw.edu.pl/~erykk/lois/}}
+\bibliographystyle{alpha}
+\bibliography{lois}{}
+
+
+%\input{appendix}
+
+
+\end{document}

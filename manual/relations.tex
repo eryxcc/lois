@@ -1,0 +1,128 @@
+\section{Domains, symbols, and relations}\label{sec:relations}
+
+It is possible to equip domains with extra structure, such as an order. LOIS includes
+an internal solver for homogeneous with extension bounds \cite{lois-sat}; also,
+several external solvers can be used for the structure $(\bbN, +)$ or $(\bbR, +, *)$.
+Such an extra
+structure does not have to be immediately declared when the domain is created; instead,
+at any time the programmer can create an object from one of the subclasses of the class
+{\tt Relation}, for example with the following declaration:
+
+\begin{lstlisting}
+RelOrder newOrder(" GT ", " LEQ ", " MAX ", " MIN ");
+\end{lstlisting}
+
+Terms representing elements of any domain can now be compared with respect to
+{\tt newOrder} (a dense total order without endpoints) using the methods {\tt rbool less(const term\& a, const term\& b)} or
+{\tt rbool leq(const term\& a, const term\& b)}. We can also find the maximum and minimum
+of two elements, using the methods {\tt term max (const term\& a, const term\& b)}
+and {\tt term min (const term\& a, const term\& b)}.
+
+When the formulas are displayed on the screen, one of the symbols given in the
+declaration of {\tt newOrder} is used. Symbols are given as objects of class
+{\tt symbol}; a conversion from {\tt const char*} and {\tt std::string} to {\tt symbol}
+is provided, but the class {\tt symbol} also allows to use symbols which are displayed
+differently depending on the context. For example, the object {\tt sym} contains 
+many symbols which are either used by LOIS itself or considered useful in applications,
+and methods {\tt useUnicode()}, {\tt useLaTeX()},
+and {\tt useASCII()}, which sets all the symbols to use the given format. The following
+symbols are defined in the object {\tt sym}:
+
+\begin{itemize}
+\item Logical symbols:
+{\tt exists}, {\tt forall}, {\tt \_and}, {\tt \_or}, {\tt eq}, {\tt neq}, {\tt in}
+
+\item Basic set symbols:
+{\tt emptyset}, {\tt ssunion} (an union of set-builder expessions), 
+{\tt leftbrace}, {\tt rightbrace}, {\tt sfepipe} (a separator between the value
+and the context in the set-builder expression), {\tt sfecomma} (a separator between
+in the context of a set-builder expression), {\tt pseudo} (operator which extracts
+a single element from a set, for the purpose of displaying {\tt lelem}s)
+
+\item Relational and functional symbols:
+{\tt leq}, {\tt geq}, {\tt greater}, {\tt less}, {\tt max}, {\tt min},
+{\tt plus}, {\tt times}, {\tt minus}, {\tt divide}, {\tt edge}, {\tt noedge},
+{\tt arrow}, {\tt noarrow}
+\end{itemize}
+
+LOIS declares the \emph{main order}, which is defined with the following line:
+
+\begin{lstlisting}
+  mainOrder = new RelOrder(sym.greater, sym.leq, sym.max, sym.min);
+\end{lstlisting}
+
+The C++ opperators {\tt <}, {\tt >}, {\tt <=} and {\tt >=}, when used on terms,
+are defined as referring
+to {\tt mainOrder}. When two orders (say, {\tt mainOrder} and {\tt newOrder}) are
+defined and used in the same formula and over the same domain, they are 
+considered to be unrelated -- intuitively, two random orders have been independently
+chosen over our domain. In general, the same rule of independence is used when
+defining multiple relations; in many cases, this yields oligomorphic homogeneous structures,
+which still have a decidable first order theory \cite{lois-sat}. The algorithm used by
+LOIS for deciding the satisfiability only takes into account relations which are actually
+used in the given formula; so, the existence of {\tt mainOrder}, even if it is not used,
+won't make the computations slower.
+
+The following subclasses of {\tt Relation} are available:
+
+\begin{itemize}
+\item {\tt RelOrder}, explained above. 
+The constructor of {\tt RelOrder} has
+four symbol arguments: {\tt greater}, {\tt leq}, {\tt max}, and {\tt min}.
+{\tt RelOrder} has four methods: {\tt less}, {\tt leq}, {\tt min}, and {\tt max}.
+
+\item {\tt RelBinary}, which creates a random binary relation over the domain.
+The constructor of {\tt RelOrder} has two symbol arguments {\tt inrel} (in the relation)
+and {\tt notinrel} (not in the relation), as well as two parameter {\tt l} and {\tt s},
+which define the properties of relation to be created. The parameter {\tt l} can take
+the value of {\tt lmNoLoops} (irreflexive), {\tt lmAllLoops} (reflexive), or 
+{\tt lmPossibleLoops} ($a$ can be in the relation with itself or not). The parameter
+{\tt s} can take the value of {\tt smSymmetric}, {\tt smAsymmetric}, or {\tt smAntisymmetric}.
+In all cases, with probability 1 we get the same graph
+(up to isomorphism), which has a decidable first order theory due to being
+homogeneous and oligomorphic (see \cite{lois-sat} for details); when choices
+which leave more possibilities ({\tt lmPossibleLoops}, {\tt smAsymmetric})
+are chosen, the internal solver has to consider all of them to verify the satisfiability
+of formulas.
+The relation is accessed with {\tt rbool operator () (const term\& a, const term\& b)}.
+
+\item {\tt RelUnary}, which creates a random partition of the domain. The constructor is
+{\tt RelUnary(symbol rel, int n)}, where every element of the domain is randomly
+assigned to one of the {\tt n} parts. Operator {\tt rbool operator () (const term\& a, int v)}
+is used to check whether {\tt a} is in the part number {\tt v} (0-based), and
+for convenience, the method
+{\tt rbool together(const term\& a, const term\& b)} checks whether {\tt a} and {\tt b}
+are in the same parts.
+
+\item {\tt RelTree}, which defines a homogeneous tree structure.
+This is an infinite tree, where every two elements have the least common ancestor,
+and it is dense without endpoints, that is, if $u$ is an ancestor of $v$, then
+there is a $w$ such that $w$ is ancestor of $v$ and $u$ is ancestor of $w$, and
+there is an ancestor of $u$ and a descendant of $w$; furthermore, there is infinite
+branching, that is, if $v_1, \ldots, v_k$
+are descendants of $u$, then there is $v$ such that the least common ancestor
+of $v$ and $v_i$ for $i=1, \ldots, k$ is $u$. This structure showcases the fact
+that, in a homogeneous structure with extension bound, the isomorphism type of
+$\{a_1, \ldots, a_n\}$ might be defined not only by relations
+on these elements -- we also need to check the relations of terms (in this case,
+using lca).
+% \cite{lois-sat}.
+Methods {\tt anceq} (``ancestor or equal'') and {\tt lca} are used to
+access the relations and functional symbols. The constructor has three symbol arguments
+{\tt opanceq}, {\tt opnotanceq}, and {\tt oplca}, which correspond to the methods.
+
+\item {\tt RelInt} and {\tt RelReal}, which define the set of integers and reals,
+respectively. The constructor defines
+the symbols related to the order, and also {\tt opplus}, {\tt optimes}, {\tt opminus},
+and {\tt opdivide}. The term {\tt constant(Domain *d, int i)} is used for integer
+constants, and there are also methods {\tt plus}, {\tt times}, {\tt minus}, and {\tt
+divide} for the basic operations.
+Note that these are not $\omega$-categorical,
+and thus they are not compatible with other relations, and the internal solver does
+not work with them -- an external solver is required \cite{lois-sat}.
+Use the namespace {\tt orderedfield\_ops} from {\tt loisextra.h} to conveniently 
+bind the C++ operators (\texttt{+ - * /}) to methods of the given {\tt RelInt} or
+{\tt RelReal}.
+\end{itemize}
+
+Note that the domain for a given {\tt term} can be obtained with the method {\tt getDom()}.

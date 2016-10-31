@@ -1,0 +1,83 @@
+\section{Piecewise v-elements} \label{app_piecewise}
+The types \verb-lelem- and \verb-relem- %(see Appendix~\ref{app_pseudo})
+ are useful for representing variables which behave in different ways under different valuations, e.g., $1|x=y;\ x|x\neq y.$
+
+For a formal syntax of those types,  we  need the following notions.
+A \emph{piecewise} v-element is an expression $e$ of the form
+$e_1|C_1;e_2|C_2;\ldots; e_k|C_k,$
+where $e_1,\ldots,e_k$ are v-elements, and $C_1,\ldots,C_k$ are constraints (i.e., first order formulas).
+% Moreover, we assume that the constraints are mutually exclusive, i.e., there is no valuation satisfying two distinct constraints.
+If $v$ is a valuation of the free variables of $e$,
+then $e[v]$ is defined as $e_i[v]$, where $1\le i\le k$ is such that
+$v$ satisfies $C_i$. If no such~$i$ exists, or it is not unique, then $e[v]$ is undefined.
+% The set of free variables $V$ of $e$ is the union of the sets of free variables of $e_i$, for $i=1,\ldots,k$.
+% Given a valuation $v$ of the free variables of $e$, define $e[v]$ to be equal to $e_i[v]$ if $\calA,v\models C_i$. In the case when there is no such $i$, $e[v]$ is undefined.
+%OUT?
+
+The types {\tt lelem} and {\tt relem} represent piecewise v-elements.
+Similarly to {\tt lset}, {\tt lelem} is associated with an inner context.
+
+\myparagraph{Assignments to {\tt lelem}}
+In \cite{lois-sem}
+%Section~\ref{sec_semantics} 
+we only described how the assignments to variables of type {\tt lset} are carried out. A variable~{\tt x} of type {\tt lelem} designates a piecewise v-element.
+ To see why using piecewise v-elements is necessary, consider the following example.
+
+\incc{whypiecewise}
+% Similarly to the previous example,  $Z$ should evaluate
+%  $\set{x\st x\in \bbA,y\in \bbA, x=y}\cup \set{(x,y)\st x\in \bbA, y\in \bbA, x\neq y}$.
+% In other words,
+In order to guarantee the appropriate value of $\tt Z$ after executing this code, at the moment of the instruction \mbox{\tt Z+=u}, the variable~{\tt u}
+needs to designate the piecewise v-element
+$x|x=y; (x,y)|x\neq y.$
+
+Internally, LOIS represents a variable {\tt x} of type {\tt lelem} designating the piecewise v-element $e_1|C_1;e_2|C_2;\ldots;e_k|C_k$
+ by a variable \bra x of type {\tt lset}, which designates the v-set
+ $\set{e_1|C_1}\cup\set{e_2|C_2}\ldots\cup\set{e_k|C_k}.$
+ The v-set \bra x can be obtained in LOIS by the instruction {\tt newSet(x)}.
+Operations on the type {\tt lelem} are carried out by lifting them to operations on the type {\tt lset}. For example,
+the assignment {\tt x = y} to the variable {\tt x} of type {\tt lelem} is simulated by executing the assignment {\tt\bra x = newSet(y)}.
+
+\myparagraph{New set}
+If {\tt x} is of type {\tt elem}, then the instruction {\tt newSet(x)} is executed as expected-- it constructs a v-set of the form $\set{x}$. If {\tt x} is of type {\tt lelem}, this operation becomes slightly more involved, as described in the paragraph ``assignment'' above.
+
+
+\myparagraph{Extract}
+If {\tt X} is of type {\tt lset}, then the result of {\tt extract(X)} is of type {\tt relem} and  designates the piecewise v-element corresponding to the v-set $X$. On the level of implementation, the return value {\tt u} of this instruction is such that \bra u={\tt X}.
+
+\begin{example}
+To see the  usefulness of this operation, consider the following function which calculates the maximum of a set of terms,
+such as $\{a_1, a_2\}$ or $\{x\st a_1 \leq x \leq a_2\}$. We assume here that  domain $\bbA$ is equipped with a linear order~$\ge$.
+
+\incc{max}
+First, we loop over all elements $x\in X$, and if $\forall y\in X. x \geq y$,
+add $x$ to the set $answer$.
+If the set $X$ indeed has a maximum, then $answer$
+will be a singleton containing this maximum; otherwise; $answer$ will be empty.
+If $X$ is equal to v-set $\{a_1, a_2\}$, then $answer$ will be calculated as $\{a_1| a_1\geq a_2; a_2|a_2\geq a_1\}$
+and
+% Now, we need to extract the only element of $answer$.
+% Note that, for $M$,
+% the only element is not a term. -- LOIS terms have a functional symbol for maximum,
+% but LOIS is not intelligent enough to simplify it, and this approach would not
+% work in general (for example, when the only element is a term in some pseudo-parallel
+% branches, and in other ones it is a an integer constant or a set).
+the
+instruction {\tt extract(X)} will return the piecewise v-element
+${a_1| a_1\geq a_2; a_2|a_2\geq a_1}$.
+\end{example}
+
+\subsection{Piecewise numbers} \label{app_piecewise_num}
+The type \verb-lnum<T>- (where \verb-T- is usually \verb-int-, but
+could be extended to other types) represents piecewise numbers. Operators are defined
+for \verb-lnum<T>- according to the pseudo-parallel semantics;
+in particular, \verb-x++- for each valuation $v$ of the internal context increments 
+$x[v]$ by the cardinality of the set of possible valuations of the current context
+which extend $v$. For example, consider the following program:
+
+\incc{lnumtest}
+
+If we know that $a \neq b$, this will output 2. If we don't know this, a representation
+of the piecewise number will be generated, which currently is $$\inco{lnumtest}.$$ Note
+the simplification algorithm failed to simplify the formula for the case when $a=b$.
+
