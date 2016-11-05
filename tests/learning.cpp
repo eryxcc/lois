@@ -15,7 +15,7 @@
 #define ADD_COLUMNS
 
 // should we learn DFA or NFA?
-#define LEARN_NFA
+// #define LEARN_NFA
 
 // consider only words of length <= LENGTH_LIMIT when verifying
 // (sometimes required for NFA languages)
@@ -25,7 +25,7 @@
 //#define QUEUESIZE 5
 
 // test on doubleword (currently allowing only 1 = [aa], 2 = [abab])
-// #define DOUBLEWORD 2
+#define DOUBLEWORD 2
 
 // test on stack language
 // #define STACKSIZE 6
@@ -35,7 +35,7 @@
 // #define NTHLAST 5
 
 // find equal letters
-#define EQLANG
+// #define EQLANG
 
 // See https://arxiv.org/pdf/1607.06268.pdf
 
@@ -325,7 +325,7 @@ void learning(const automaton& L) {
   std::cout << "Guessed DFA:" << std::endl;
   printAutomaton(Learned);
   std::cout << std::endl;
-  
+
   // (q1,q2) \in compare iff, after reading some word, the
   // DFA L is in state q1 and the DFA Learned
   // is in state q2
@@ -333,20 +333,20 @@ void learning(const automaton& L) {
   
   // for each (q1,q2) in compare, witnesses contains ((q1,q2), w),
   // where w is the witness word
-  lsetof<elpair> witnesses;
+  lsetof<lpair<elpair, word> > witnesses;
 
   for(elem e: L.I) for(elem e2: Learned.I) {
     auto initpair = elpair(e, e2);
     compare += initpair;
-    witnesses += elpair(initpair, word());
+    witnesses += make_lpair(initpair, word());
     }
   
   for(auto witness: witnesses) {
 
-    elem q1 = as<elpair> (witness.first).first;
-    elem q2 = as<elpair> (witness.first).second;
+    elem q1 = (witness.first).first;
+    elem q2 = (witness.first).second;
     
-    word w = as<word> (witness.second);
+    word w = (witness.second);
     
     lbool m1 = memberof(q1, L.F);
     lbool m2 = memberof(q2, Learned.F);
@@ -377,7 +377,7 @@ void learning(const automaton& L) {
           elpair p2 = elpair(t1.tgt, t2.tgt);
           If(!memberof(p2, compare)) {
             compare += p2;
-            witnesses += make_pair(p2, concat(w, a));
+            witnesses += make_lpair(p2, concat(w, a));
             }
           }
     }

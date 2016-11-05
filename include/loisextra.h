@@ -17,6 +17,11 @@ namespace lois {
 inline bool isused(vptr v, int name) { return false; }
 inline int alpha(int name, vptr v1, vptr v2) { return name; }
 
+// string constant
+
+inline bool isused(vptr v, const std::string& name) { return false; }
+inline std::string alpha(const std::string& name, vptr v1, vptr v2) { return name; }
+
 // element pair
 
 inline bool isused(vptr v, elpair p) { return isused(v, p.first) || isused(v, p.second); }
@@ -331,6 +336,39 @@ namespace orderedfield_ops {
   inline term operator/ (elem x, elem y) { return mainField->divide(as<term>(x),as<term>(y)); }
   }
 
+// statically typed pair
+// std::pair assumes that the result of comparison is of type 'bool',
+// and that's why we cannot use it
+
+template<class T, class U> struct lpair {
+  T first;
+  U second;
+  lpair(T f, U s) : first(f), second(s) {}
+  operator elem() const { return elem(elof<lpair<T,U>> (*this)); }
+  };
+
+template<class T, class U> lpair<T,U> make_lpair(T t, U u) { return lpair<T,U>(t,u); }
+
+template<class T, class U> 
+  bool isused(vptr v, lpair<T,U> p) { return isused(v, p.first) || isused(v, p.second); }
+
+template<class T, class U>  inline lpair<T,U> alpha(lpair<T,U> p, vptr v1, vptr v2) { 
+  return make_lpair(alpha(p.first, v1, v2), alpha(p.second, v1, v2));
+  }
+
+template<class T, class U> 
+  rbool operator == (lpair<T,U> a, lpair<T,U> b) { return a.first == b.first && a.second == b.second; }
+template<class T, class U> 
+  rbool operator != (lpair<T,U> a, lpair<T,U> b) { return a.first != b.first || a.second != b.second; }
+template<class T, class U> 
+  rbool operator <  (lpair<T,U> a, lpair<T,U> b) { return a.first < b.first || (a.first == b.first && a.second < b.second); }
+template<class T, class U> 
+  rbool operator <= (lpair<T,U> a, lpair<T,U> b) { return a.first < b.first || (a.first == b.first && a.second <= b.second); }
+
+template<class T, class U> 
+  std::ostream& operator << (std::ostream& os, lpair<T,U> p) { return os << "(" << p.first << "," << p.second << ")"; }
+
+  
 }
 
 #endif

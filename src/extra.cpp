@@ -40,6 +40,7 @@ std::ostream& operator << (std::ostream& os, eltuple t) {
 
 elem::elem(eltuple x) : p(elem(elof<eltuple> (x)).p) {}
 elem::elem(elpair x) : p(elem(elof<elpair> (x)).p) {}
+elem::elem(std::string x) { p = elem(elof<std::string> (x)).p; }
 elem::elem(int x) { 
   using namespace orderedfield_ops;
   if(mainField && mainDomain)

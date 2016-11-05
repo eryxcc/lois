@@ -813,6 +813,7 @@ struct elem {
   elem(const lset& s);
   elem(std::shared_ptr<struct ESet> s);
   elem(int);
+  elem(std::string);
   elem(vptr);
   elem(term);
   elem(elpair);
