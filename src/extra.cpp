@@ -2,8 +2,6 @@
 
 // needed for phi->alph in getsingletonset
 #include "../include/loisinternal.h"
-
-
 namespace lois {
 
 inline rbool operator == (eltuple a, eltuple b) { 
@@ -172,6 +170,21 @@ template<class T> void cartesianRange(T beg, T end, eltuple& v, lset& cart) {
 lset cartesian(std::initializer_list<elem> l, eltuple v) {
   lset cart;
   cartesianRange(l.begin(), l.end(), v, cart);
+  return cart;
+  }
+
+void cartesianPowerAux(const lset& x, eltuple& v, int left, lset& cart) {
+  if(!left) cart += v;
+  else for(elem a: x) {
+    v.push_back(a);
+    cartesianPowerAux(x, v, left-1, cart);
+    v.pop_back();
+    }
+  }
+
+lset cartesianPower(const lset& x, int power, eltuple v) {
+  lset cart;
+  cartesianPowerAux(x, v, power, cart);
   return cart;
   }
 

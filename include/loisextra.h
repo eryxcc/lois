@@ -111,6 +111,9 @@ lset operator * (const lset& x, const lset& y);
 // the Cartesian product of more than 2
 lset cartesian(std::initializer_list<elem> l, eltuple v = eltuple());
 
+// the Cartesian power
+lset cartesianPower(const lset& x, int power, eltuple v = eltuple());
+
 // macros
 //--------
 
@@ -368,7 +371,6 @@ template<class T, class U>
 template<class T, class U> 
   std::ostream& operator << (std::ostream& os, lpair<T,U> p) { return os << "(" << p.first << "," << p.second << ")"; }
 
-  
 }
 
 #endif
