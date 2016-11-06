@@ -305,7 +305,7 @@ struct ConstraintGraph
   }
 };
 
-struct CSPInstance = {
+struct CSPInstance {
   ConstraintGraph Instance;
   ConstraintGraph Template;
   
@@ -319,7 +319,7 @@ struct CSPInstance = {
   bool hasSolution() {
     return true;
   }    
-}
+};
 
 
 int main() {
