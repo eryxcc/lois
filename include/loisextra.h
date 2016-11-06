@@ -125,6 +125,21 @@ lset cartesianPower(const lset& x, int power, eltuple v = eltuple());
   ([=]() -> lset { lset S; for(auto x: (set)) If(condition) S += (replace); return S; }())
 #define FILTER(x, set, condition) FILTERMAP(x, set, condition, x)
 #define MAP(x, set, replace) FILTERMAP(x, set, ftrue, replace)
+    
+#define SETOF_1(expr, decl1, condition) \
+  ([=]() -> lset { lset S; for(auto decl1) If(condition) S += (expr); return S; }())
+#define SETOF_2(expr, decl1, decl2, condition) \
+  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) If(condition) S += (expr); return S; }())
+#define SETOF_3(expr, decl1, decl2, decl3, condition) \
+  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) for(auto decl3) If(condition) S += (expr); return S; }())
+#define SETOF_4(expr, decl1, decl2, decl3, decl4, condition) \
+  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) for(auto decl3) for(auto decl4) If(condition) S += (expr); return S; }())
+#define SETOF_5(expr, decl1, decl2, decl3, decl4, decl5, condition) \
+  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) for(auto decl3) for(auto decl4) for(auto decl5) If(condition) S += (expr); return S; }())
+
+#define GET_MACRO(U,  _1,_2,_3,_4,_5, NAME,...) NAME
+#define SETOF(expr, ...) GET_MACRO(__VA_ARGS__, SETOF_5,SETOF_4, SETOF_3, SETOF_2, SETOF_1)(expr, __VA_ARGS__)
+    
 
 // axioms & declareatom
 //----------------------
