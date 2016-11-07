@@ -6,6 +6,7 @@
 
 #include <set>
 
+#include <map>
 // #include <gecode/driver.hh>
 // #include <gecode/int.hh>
 // #include <gecode/minimodel.hh>
@@ -157,18 +158,26 @@ lset computeOrbits(const lset& V, const symmetry& sym=LIN) {
     
     return res;    
   }
+  
 
 
+
+  
 //typedef std::pair<elem, eltuple> Constraint;
-typedef elpair Constraint;
+typedef lpair<elem,eltuple> Constraint;
 
 struct ConstraintGraph 
   //a constraint graph is a set of ``variables'' and a set of ``constraints'',
   //where each constraint is a pair (id, t) where id is and  and t is a tuple of variables.
 {
-  lset variables = newSet();
-  lsetof<Constraint> constraints = newSet();
+  lset variables; 
+  lsetof<Constraint> constraints; 
   
+  ConstraintGraph() {
+    variables = newSet();
+    constraints = newSet();
+    
+  }
 /*  ConstraintGraph powerConstraintGraph(int n)
     //Computes the power ConstraintGraph I^n, whose variables are n-tuples of variables of I,
     //and whose constraints are obtained by n-ary conjunction
@@ -191,9 +200,9 @@ struct ConstraintGraph
 
   int constraintSize(Constraint c)
   {
-    return (as<eltuple>(c.second)).size();
-    
+    return (as<eltuple>(c.second)).size();    
   }
+  
   std::set<int> constraintSizes() {
     std::set<int> s;
     
@@ -201,6 +210,22 @@ struct ConstraintGraph
       s.insert(constraintSize(c));
     
     return s;
+  }
+  
+  
+  //takes an n-tuple of k-tuples and returns a k-tuple of n-tuples
+  eltuple transpose(eltuple tup) {
+    eltuple res;
+        
+    for (int i=0; true; i++) {
+      eltuple coord;
+      for (int j=0; j<tup.size(); j++) {
+        if (as<eltuple>(tup[j]).size()>=i) {return res;}        
+        coord.push_back(as<eltuple>(tup[j])[i]);
+      }
+      res.push_back(coord);      
+    }
+    return res;
   }
   
   ConstraintGraph unarizedConstraintGraph()
@@ -236,16 +261,98 @@ struct ConstraintGraph
       return R;
     }
   
+    ConstraintGraph( const ConstraintGraph &obj) //copy constructor
+    {
+      variables = obj.variables;
+      constraints = obj.constraints;
+    } 
   
-    //constructs CSP instance corresponding to existence of terms satisfying h1 equations
-  // CSPInstance TermInstance(set<string> fsym, set<string> vsym,
-  // set<pair<pair<string,vect<string>>,string> fv,
-  // set<pair<pair<string,vect<string>>,pair<pair<string,vect<string>>> ff
-  // )
-  // {
-  //
-  //
-  // }
+  void addConstants() {
+    for (auto x: variables)
+      constraints += Constraint(elpair(elem("="),x),eltuple({x}));
+  }
+  
+  //returns the set of constraint symbols which appear
+  lset getConstraintSymbols()   
+  {    
+    lset ret;
+    for (auto c: constraints) {
+      lbool found = false;
+      for (auto el:ret)
+        If(el == c.first)
+          found &= true;
+      If (!found)
+        ret += c.first;
+    }  
+    return ret;
+  }
+  
+  
+  //return the set of pairs (relation symbol s, set of tuples in constraint with symbol s)
+  lsetof<lpair<elem,lset>> getRelations()
+  {    
+    lset res;
+    lset symbols = getConstraintSymbols();
+        
+    for (auto sym: symbols) {
+      lset curr = newSet();
+      
+      for (auto c: constraints)
+        If(c.first == sym)
+          curr += c.second;
+      
+      res += elpair(sym,curr);
+    }
+      
+    return res;
+  }
+  
+  ConstraintGraph cartesianPower(int n) 
+  {
+    ConstraintGraph res;
+    
+    res.variables = ::cartesianPower(variables, n);
+    res.constraints = newSet();
+    
+    auto ass = getRelations();
+    cout << "ass: " << ass << endl;
+    
+    for (auto x: ass) {            
+      //EXCEPTION OCCURS HERE
+//      cout << "next x:";
+//      cout << x << endl;
+/*      for (auto tup: ::cartesianPower(x.second, n)) 
+        res.constraints += Constraint(x.first, transpose(as<eltuple>(tup)));*/
+    }
+    return res;
+  }
+  
+  //replaces each vertex v by a pair (tag, v)
+  void markVariables(elem tag)
+  {
+    variables = SETOF(elpair(tag,v), v:variables, true);
+    
+    lset new_constraints = newSet();
+    
+    for (auto c:constraints) {
+      eltuple t;
+      
+      cout << "constraint: " << c << endl;
+      cout << "length: " << c.second.size() << endl;
+      cout << "[";
+      int i;
+      for (i=0; i < c.second.size()-1; i++) {        
+        t.push_back(elpair(tag, c.second[i]));
+        cout << c.second[i] << ",";
+      }
+      t.push_back(elpair(tag, c.second[i]));
+      cout << c.second[i] << "]" <<endl;
+      
+      new_constraints += Constraint(c.first, t);      
+    }
+    
+    constraints = new_constraints;    
+  }
     
   ConstraintGraph squashedConstraintGraph()
   {
@@ -305,17 +412,156 @@ struct ConstraintGraph
   }
 };
 
-struct CSPInstance {
-  ConstraintGraph Instance;
-  ConstraintGraph Template;
+typedef pair<int, std::vector<int>> IdentityTerm;
+typedef pair<IdentityTerm, IdentityTerm> IdentityTT;
+typedef pair<IdentityTerm, int> IdentityTV;
+
+eltuple mapTuple(std::vector<int> recipe, eltuple source) {
+  eltuple res;
   
+  for (int i=0; i<recipe.size(); i++)  
+    res.push_back(source[recipe[i]]);
+  
+  return res;
+}
+
+//copies elements of source to target, without duplicates
+void copyAsSet(const  std::vector<int> & source, std::vector<int> & target)
+{
+  for (int i=0; i<source.size(); i++) {
+    bool found=false;
+    int j;
+    for (j=0; (!found) && (j<target.size()); j++) 
+      if (target[j]==source[i]) 
+        found=true;
+    if (!found) 
+      target.push_back(source[i]);
+  }
+}
+
+//maps each element of source to its index at which it occurs in map
+std::vector<int> applyMap(const std::vector<int> & source, std::vector<int> & map)
+{  
+  std::vector<int> res;
+  for (int i=0; i<source.size(); i++) {
+    for (int j=0; ; j++)
+      if (map[j]==source[i]) {
+        res.push_back(j);
+        break;
+      }
+  }
+  return res;
+}
+  
+
+
+class CSPInstance {
+public:
+  ConstraintGraph source;
+  ConstraintGraph target;
+
   CSPInstance(ConstraintGraph I, ConstraintGraph T) 
   {
-    Instance = I;
-    Template = T;    
+    source = I;
+    target = T;    
   }
   
-  //test the existence of a homomorphism from Instance to Template
+
+//  constructs CSP instance corresponding to existence of terms satisfying h1 equations
+CSPInstance(ConstraintGraph I, std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV)
+{
+  std::set<IdentityTerm> allTerms;
+
+  for (auto i: identitiesTT) {
+    allTerms.insert(i.first);
+    allTerms.insert(i.second);
+  }
+  
+  for (auto i:identitiesTV) {
+    allTerms.insert(i.first);
+  }
+
+  std::map<int,int> arities;  //a map mapping a function symbol to its arity
+  
+  for (auto t:allTerms) {
+    if (arities.find(t.first)==arities.end()) {
+      arities[t.first]=t.second.size();
+    }
+    else if (arities[t.first]!=t.second.size())    
+      throw exception();
+  }    
+  
+  lset vars = newSet();
+  lset cons = newSet();
+  
+  for (auto& x: arities) {
+    ConstraintGraph cart = I.cartesianPower(x.second);
+//    cart.markVariables(elem(x.first));
+
+/*    vars |= cart.variables;
+    cons |= cart.constraints;*/
+  }
+    
+  /*
+  for (auto eq: identitiesTT) {
+    IdentityTerm lhs = eq.first;
+    IdentityTerm rhs = eq.second;
+    
+    int f = lhs.first;
+    int g = rhs.first;
+    
+    auto args_f = lhs.second;
+    auto args_g = rhs.second;
+    
+    
+    vector<int> all_args;
+    
+    copyAsSet(args_f,all_args);
+    copyAsSet(args_g,all_args);
+        
+    vector<int> args_f_rel=applyMap(args_f,all_args);
+    vector<int> args_g_rel=applyMap(args_g,all_args);
+    
+    
+    lset cart = cartesianPower(I.variables, all_args.size());
+    
+    for (auto t: cart) {
+      auto ftup=elpair(elem(f), mapTuple(args_f_rel, as<eltuple>(t)));
+      auto gtup=elpair(elem(g), mapTuple(args_g_rel, as<eltuple>(t)));
+      
+      If (ftup!=gtup)
+        cons += Constraint(elem("="),eltuple({ftup,gtup}));
+    }
+  }
+  
+  for (auto eq: identitiesTV) {
+    IdentityTerm lhs = eq.first;
+    int x = eq.second;
+    int f = lhs.first;
+    auto args_f = lhs.second;
+    
+    vector<int> all_args;
+    
+    copyAsSet(args_f,all_args);
+    vector<int> args_f_rel=applyMap(args_f,all_args);
+    
+    int n = arities[f];
+    
+    lset cart = cartesianPower(I.variables, all_args.size());
+    
+    for (auto t:cart)
+      cons += Constraint(elpair(elem("="),as<eltuple>(t)[x]),
+        eltuple({elpair(elem(f), mapTuple(args_f_rel, as<eltuple>(t)))}));  
+  }
+  */
+  source.variables = vars;
+  source.constraints = cons;
+  
+  target = ConstraintGraph(I);
+  target.addConstants();
+}
+
+  //test the existence of a homomorphism from source to target
   bool hasSolution() {
     return true;
   }    
@@ -341,25 +587,9 @@ int main() {
   ConstraintGraph I; //the CSP ConstraintGraph
   
   I.variables = SETOF (newSet(a,b), a:A, b:A, a!=b);
-/*  for(elem a: A) for(elem b: A)
-    If(a != b)
-      I.variables += newSet(a, b);*/
-
-
-
+  I.constraints = SETOF (Constraint(elem("NEQ"), eltuple({newSet(a,b), newSet(b,c)})), a:A, b:A, c:A, a!=c);          
   
-  for(elem a: A) for(elem b: A)  for(elem c: A)
-    If(a != c) 
-    {
-      I.constraints += Constraint(1, eltuple ({newSet(a,b), newSet(b,c)}));
-    }
-  
-/*    set<int> myset = I.constraintSizes();
-    myset.insert(1);
-    cout << powers(I.variables, myset);*/
-    
-    
-/*  std::cout 
+  std::cout 
     << "The set of variables is:" << std::endl 
     << I.variables << std::endl << std::endl;
   
@@ -367,6 +597,27 @@ int main() {
     << "The set of constraints is:" << std::endl 
     << I.constraints << std::endl << std::endl;
   
+  CSPInstance CSP = CSPInstance(I,{IdentityTT(IdentityTerm(0,{0,1}),IdentityTerm(0,{1,0}))}, {//IdentityTV(IdentityTerm(0,{0,0,0}),0)
+});
+  
+  
+  std::cout 
+    << "The set of variables is:" << std::endl 
+    << CSP.source.variables << std::endl << std::endl;
+  
+  std::cout 
+    << "The set of constraints is:" << std::endl 
+    << CSP.source.constraints << std::endl << std::endl;
+
+
+  // auto sym = CSP.source.getConstraintSymbols();
+  // std::cout
+  //   << "The vector of constraint symbols is:" << std::endl
+  //   << sym << std::endl << std::endl;
+
+
+  
+/*  
   ConstraintGraph U = I.unarizedConstraintGraph();
     
   std::cout 
