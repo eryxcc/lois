@@ -193,12 +193,12 @@ public:
     constraints = obj.constraints;
   } 
   
-  void addConstants() 
+  void addConstants(elem symbol=elem("=")) 
   //adds unary constant constraints: for each element x add constraint 
   //elpair(elem("="),x)
   {
     for (auto x: vertices)
-      constraints += Constraint(elpair(elem("="),x),eltuple({x}));
+      constraints += Constraint(elpair(symbol,x),eltuple({x}));
   }
   
   void markVertices(elem tag);
@@ -206,18 +206,23 @@ public:
   
   friend ostream& operator<<(ostream& os, const ConstraintGraph& dt);  
     
-  ConstraintGraph unarizedConstraintGraph();
+  ConstraintGraph unarize();
+    //Computes the ConstraintGraph whose vertices are n-tuples of vertices of I for n∈lengths
+  //(for n=1 tuples are unpacked)
+    //and whose constraints of length n, for n∈lengths are replaced by unary contraints,
+  //and with binary constraints for the graphs of the n projections of n-tuples
+      
   
-  ConstraintGraph squashedConstraintGraph()
-  {
-    return unarizedConstraintGraph().quotientConstraintGraph();    
-  }
-    
-  
-  ConstraintGraph quotientConstraintGraph(const symmetry& sym=LIN);
+  ConstraintGraph quotient(const symmetry& sym=LIN);
     //Returns the finite ConstraintGraph obtained by quotienting I
     //by the equivalence relation which identifies two vertices if they 
     //have the same atomic type with respect to "<"
+  
+  ConstraintGraph squash(const symmetry& sym=LIN)
+  {
+    return unarize().quotient(sym);
+  }
+  
 
   ConstraintGraph cartesianPower(const int & n);
   //construct the cartesian power constraint graph, whose vertices are n-tuples of vertices,
@@ -227,7 +232,7 @@ public:
   lsetof<lpair<elem,lset>> getRelations();
     
   //  constructs constraint graph corresponding to existence of terms satisfying h1 equations
-  ConstraintGraph termConstraintGraph(std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV,
+  ConstraintGraph termTest(std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV,
   elem ttSymbol = elem("="), elem tvSymbol = elem ("="));
   
   
@@ -260,9 +265,7 @@ public:
   {
     source = I;
     target = T;    
-  }
-  
-  //CSPInstance(ConstraintGraph* I, std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV);
+  }  
 
   //test the existence of a homomorphism from source to target -- not yet implemented
   bool hasSolution() {
@@ -407,7 +410,7 @@ void ConstraintGraph::markVertices(elem tag)
   constraints = new_constraints;    
 }
 
-ConstraintGraph ConstraintGraph::unarizedConstraintGraph()
+ConstraintGraph ConstraintGraph::unarize()
     //Computes the ConstraintGraph whose vertices are n-tuples of vertices of I for n∈lengths
   //(for n=1 tuples are unpacked)
     //and whose constraints of length n, for n∈lengths are replaced by unary contraints,
@@ -440,7 +443,7 @@ ConstraintGraph ConstraintGraph::unarizedConstraintGraph()
   return R;
 }
 
-ConstraintGraph ConstraintGraph::quotientConstraintGraph(const symmetry& sym)
+ConstraintGraph ConstraintGraph::quotient(const symmetry& sym)
   //Returns the finite ConstraintGraph obtained by quotienting I
   //by the equivalence relation which identifies two vertices if they 
   //have the same atomic type with respect to "<"
@@ -493,7 +496,7 @@ ConstraintGraph ConstraintGraph::quotientConstraintGraph(const symmetry& sym)
 }
 
 //  constructs CSP instance corresponding to existence of terms satisfying h1 equations
-ConstraintGraph ConstraintGraph::termConstraintGraph(std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV,
+ConstraintGraph ConstraintGraph::termTest(std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV,
 elem ttSymbol, elem tvSymbol)
 {
   std::set<IdentityTerm> allTerms;
@@ -633,13 +636,26 @@ int main() {
   std::cout << "THE SQUARE:" << endl << Pow;
   
   
-  ConstraintGraph T = I.termConstraintGraph(
+  ConstraintGraph T = I.termTest(
     { IdentityTerm(0,{0,1}) == IdentityTerm(0,{1,0}) }, 
     { IdentityTerm(0,{0,0}) == 0 }
   );
   
   std::cout << "TERM CONSTRAINT GRAPH:" << endl << T;
   
+  
+  ConstraintGraph S = I.squash(EQ);
+  
+  std::cout << "TERM SQUASH:" << endl << S;
+  
+  T = S.termTest(
+    { IdentityTerm(0,{0,1}) == IdentityTerm(0,{1,0}) }, 
+    { 
+    //  IdentityTerm(0,{0,0}) == 0 
+    }
+  );
+  
+  std::cout << "TERM CONSTRAINT GRAPH:" << endl << T;
   
   return 0;
   }
