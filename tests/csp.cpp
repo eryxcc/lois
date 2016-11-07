@@ -176,27 +176,10 @@ struct ConstraintGraph
   ConstraintGraph() {
     variables = newSet();
     constraints = newSet();
-    
   }
-/*  ConstraintGraph powerConstraintGraph(int n)
-    //Computes the power ConstraintGraph I^n, whose variables are n-tuples of variables of I,
-    //and whose constraints are obtained by n-ary conjunction
-  {
-    eltuple tup_vars = new vector<lset>();
-    eltuple tup_constraints = new vector<lset>();
-    
-    for (int i=0; i<n; i++)
-      tup_vars.push_back(variables);
-    
-    
-    
-    ConstraintGraph res;
-    res.variables = cartesian(tup);
-    
-    res.constraints = 
-    
-  }*/
   
+  friend ostream& operator<<(ostream& os, const ConstraintGraph& dt);  
+    
 
   int constraintSize(Constraint c)
   {
@@ -214,13 +197,13 @@ struct ConstraintGraph
   
   
   //takes an n-tuple of k-tuples and returns a k-tuple of n-tuples
-  eltuple transpose(eltuple tup) {
+  eltuple transpose(const eltuple& tup) {
     eltuple res;
         
     for (int i=0; true; i++) {
       eltuple coord;
       for (int j=0; j<tup.size(); j++) {
-        if (as<eltuple>(tup[j]).size()>=i) {return res;}        
+        if (as<eltuple>(tup[j]).size()==i) {return res;}        
         coord.push_back(as<eltuple>(tup[j])[i]);
       }
       res.push_back(coord);      
@@ -307,22 +290,25 @@ struct ConstraintGraph
     return res;
   }
   
-  ConstraintGraph cartesianPower(int n) 
+  //construct the cartesian power constraint graph, whose variables are n-tuples of variables,
+  //and constraints are obtained by taking coordinatewise AND of n-tuples of constraints
+  ConstraintGraph cartesianPower(const int & n) 
   {
     ConstraintGraph res;
     
     res.variables = ::cartesianPower(variables, n);
     res.constraints = newSet();
     
-    auto ass = getRelations();
-    cout << "ass: " << ass << endl;
+    lset ass = getRelations();
+    //it would be nicer to have auto instead of lset but this results in error (cf. issue #7)    
     
-    for (auto x: ass) {            
-      //EXCEPTION OCCURS HERE
-//      cout << "next x:";
-//      cout << x << endl;
-/*      for (auto tup: ::cartesianPower(x.second, n)) 
-        res.constraints += Constraint(x.first, transpose(as<eltuple>(tup)));*/
+    for (auto x: ass) {
+      lset rel = asSet(as<elpair>(x).second);
+      lset pow = ::cartesianPower(rel, n);
+
+      for (auto tup: pow) {
+        res.constraints += Constraint(as<elpair>(x).first, transpose(as<eltuple>(tup)));
+      }
     }
     return res;
   }
@@ -337,18 +323,11 @@ struct ConstraintGraph
     for (auto c:constraints) {
       eltuple t;
       
-      cout << "constraint: " << c << endl;
-      cout << "length: " << c.second.size() << endl;
-      cout << "[";
-      int i;
-      for (i=0; i < c.second.size()-1; i++) {        
+      for (int i=0; i < c.second.size(); i++) {
         t.push_back(elpair(tag, c.second[i]));
-        cout << c.second[i] << ",";
       }
-      t.push_back(elpair(tag, c.second[i]));
-      cout << c.second[i] << "]" <<endl;
       
-      new_constraints += Constraint(c.first, t);      
+      new_constraints += Constraint(c.first, t);
     }
     
     constraints = new_constraints;    
@@ -411,6 +390,20 @@ struct ConstraintGraph
     return R;
   }
 };
+
+ostream& operator<<(ostream& os, const ConstraintGraph& I) 
+{
+  os
+    << "The set of variables is:" << std::endl 
+    << I.variables << std::endl << std::endl;
+
+  os
+    << "The set of constraints is:" << std::endl 
+    << I.constraints << std::endl << std::endl;
+  
+  return os;
+}
+
 
 typedef pair<int, std::vector<int>> IdentityTerm;
 typedef pair<IdentityTerm, IdentityTerm> IdentityTT;
@@ -496,13 +489,13 @@ CSPInstance(ConstraintGraph I, std::set<IdentityTT> identitiesTT, std::set<Ident
   
   for (auto& x: arities) {
     ConstraintGraph cart = I.cartesianPower(x.second);
-//    cart.markVariables(elem(x.first));
+  cart.markVariables(elem(x.first));
 
-/*    vars |= cart.variables;
-    cons |= cart.constraints;*/
+    vars |= cart.variables;
+    cons |= cart.constraints;
   }
     
-  /*
+  
   for (auto eq: identitiesTT) {
     IdentityTerm lhs = eq.first;
     IdentityTerm rhs = eq.second;
@@ -553,7 +546,7 @@ CSPInstance(ConstraintGraph I, std::set<IdentityTT> identitiesTT, std::set<Ident
       cons += Constraint(elpair(elem("="),as<eltuple>(t)[x]),
         eltuple({elpair(elem(f), mapTuple(args_f_rel, as<eltuple>(t)))}));  
   }
-  */
+  
   source.variables = vars;
   source.constraints = cons;
   
@@ -576,44 +569,32 @@ int main() {
 //  solver = solverBasic() || solverIncremental("cvc4 --lang smt --incremental");
 //  solver = solverBasic() || solverIncremental("./z3 -smt2 -in");
 //  solver = solverBasic() || solverIncremental("./cvc4-new --lang smt --incremental");
-
+    
+    
   Domain dA("Atoms");
   lset A = dA.getSet();
 
   sym.neq = "≠";
-  
-
-  
+      
   ConstraintGraph I; //the CSP ConstraintGraph
   
-  I.variables = SETOF (newSet(a,b), a:A, b:A, a!=b);
-  I.constraints = SETOF (Constraint(elem("NEQ"), eltuple({newSet(a,b), newSet(b,c)})), a:A, b:A, c:A, a!=c);          
+  // I.variables = SETOF (newSet(a,b), a:A, b:A, a!=b);
+  // I.constraints = SETOF (Constraint(elem("NEQ"), eltuple({newSet(a,b), newSet(b,c)})), a:A, b:A, c:A, a!=c);
+  I.variables = SETOF (a, a:A, true);
+  I.constraints = SETOF (Constraint(elem("Dom"), eltuple({a})), a:A, true);
+    
+  std::cout << "THE INSTANCE: " << endl << I;
+    
+  ConstraintGraph Pow = I.cartesianPower(2);
   
-  std::cout 
-    << "The set of variables is:" << std::endl 
-    << I.variables << std::endl << std::endl;
-  
-  std::cout 
-    << "The set of constraints is:" << std::endl 
-    << I.constraints << std::endl << std::endl;
-  
-  CSPInstance CSP = CSPInstance(I,{IdentityTT(IdentityTerm(0,{0,1}),IdentityTerm(0,{1,0}))}, {//IdentityTV(IdentityTerm(0,{0,0,0}),0)
-});
+  std::cout << "THE SQUARE:" << endl << Pow;
   
   
-  std::cout 
-    << "The set of variables is:" << std::endl 
-    << CSP.source.variables << std::endl << std::endl;
+  CSPInstance CSP = CSPInstance(I,{IdentityTT(IdentityTerm(0,{0,1}),IdentityTerm(0,{1,0}))}, {IdentityTV(IdentityTerm(0,{0,0}),0)});
   
-  std::cout 
-    << "The set of constraints is:" << std::endl 
-    << CSP.source.constraints << std::endl << std::endl;
-
-
-  // auto sym = CSP.source.getConstraintSymbols();
-  // std::cout
-  //   << "The vector of constraint symbols is:" << std::endl
-  //   << sym << std::endl << std::endl;
+  std::cout << "THE TERM INSTANCE SOURCE:" << endl << CSP.source;
+  std::cout << "THE TERM INSTANCE TARGET:" << endl << CSP.target;
+  
 
 
   
