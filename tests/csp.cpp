@@ -181,6 +181,8 @@ public:
     constraints = newSet();
   }*/
   
+
+  
   ConstraintGraph(lset vars=newSet(), lsetof<Constraint> cons=newSet())
   {
     vertices=vars;
@@ -192,13 +194,21 @@ public:
     vertices = obj.vertices;
     constraints = obj.constraints;
   } 
+
+  //default function for labels of constants (i.e., adding a constant c is 
+  //the same as adding a unary constraint  (f(c), {c}); where f is some function)   
+  static  elem defaultConstantLabel(elem x)
+  {
+    return elpair(elem("="),x);
+  } 
+
   
-  void addConstants(elem symbol=elem("=")) 
+  void addConstants(  std::function<elem(elem)> label = defaultConstantLabel )
   //adds unary constant constraints: for each element x add constraint 
   //elpair(elem("="),x)
   {
     for (auto x: vertices)
-      constraints += Constraint(elpair(symbol,x),eltuple({x}));
+      constraints += Constraint(label(x),eltuple({x}));
   }
   
   void markVertices(elem tag);
@@ -233,7 +243,7 @@ public:
     
   //  constructs constraint graph corresponding to existence of terms satisfying h1 equations
   ConstraintGraph termTest(std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV,
-  elem ttSymbol = elem("="), elem tvSymbol = elem ("="));
+  elem ttSymbol = elem("="),   std::function<elem(elem)> constLabel = defaultConstantLabel );
   
   
   
@@ -497,7 +507,7 @@ ConstraintGraph ConstraintGraph::quotient(const symmetry& sym)
 
 //  constructs CSP instance corresponding to existence of terms satisfying h1 equations
 ConstraintGraph ConstraintGraph::termTest(std::set<IdentityTT> identitiesTT, std::set<IdentityTV> identitiesTV,
-elem ttSymbol, elem tvSymbol)
+elem ttSymbol,   std::function<elem(elem)> constLabel)
 {
   std::set<IdentityTerm> allTerms;
 
@@ -581,7 +591,7 @@ elem ttSymbol, elem tvSymbol)
     lset cart = ::cartesianPower(vertices, all_args.size());
     
     for (auto t:cart)
-      cons += Constraint(elpair(tvSymbol,as<eltuple>(t)[x]),
+      cons += Constraint(constLabel(as<eltuple>(t)[x]),//elpair(tvSymbol,as<eltuple>(t)[x]),
         eltuple({elpair(elem(f), mapTuple(args_f_rel, as<eltuple>(t)))}));  
   }
       
@@ -624,10 +634,10 @@ int main() {
       
   ConstraintGraph I; //the CSP ConstraintGraph
   
-  I.vertices = SETOF (newSet(a,b), a:A, b:A, a!=b);
-  I.constraints = SETOF (Constraint(elem("NEQ"), eltuple({newSet(a,b), newSet(b,c)})), a:A, b:A, c:A, a!=c);
-  // I.vertices = SETOF (a, a:A, true);
-  // I.constraints = SETOF (Constraint(elem("Dom"), eltuple({a})), a:A, true);
+  // I.vertices = SETOF (newSet(a,b), a:A, b:A, a!=b);
+//   I.constraints = SETOF (Constraint(elem("NEQ"), eltuple({newSet(a,b), newSet(b,c)})), a:A, b:A, c:A, a!=c);
+  I.vertices = SETOF (a, a:A, true);
+  I.constraints = SETOF (Constraint(elem("Dom"), eltuple({a})), a:A, true);
     
   std::cout << "THE INSTANCE: " << endl << I;
     
@@ -644,18 +654,18 @@ int main() {
   std::cout << "TERM CONSTRAINT GRAPH:" << endl << T;
   
   
-  ConstraintGraph S = I.squash(EQ);
-  
-  std::cout << "TERM SQUASH:" << endl << S;
-  
-  T = S.termTest(
-    { IdentityTerm(0,{0,1}) == IdentityTerm(0,{1,0}) }, 
-    { 
-    //  IdentityTerm(0,{0,0}) == 0 
-    }
-  );
-  
-  std::cout << "TERM CONSTRAINT GRAPH:" << endl << T;
+  // ConstraintGraph S = I.squash(EQ);
+  //
+  // std::cout << "TERM SQUASH:" << endl << S;
+  //
+  // T = S.termTest(
+  //   { IdentityTerm(0,{0,1}) == IdentityTerm(0,{1,0}) },
+  //   {
+  //   //  IdentityTerm(0,{0,0}) == 0
+  //   }
+  // );
+  //
+  // std::cout << "TERM CONSTRAINT GRAPH:" << endl << T;
   
   return 0;
   }
