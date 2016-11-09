@@ -53,7 +53,8 @@ void listAllChoices(lset& orbitids, std::vector<vptr>& variables, elem i, int a,
     
     lbool neworbit = true;
     for(auto el: orbitids) 
-      If(neworbit && (as<elpair>(el).first == i)) neworbit = false;
+      If (neworbit)
+      If((as<elpair>(el).first == i)) neworbit = false;
 
     If(neworbit) {
         orbitcount++;
@@ -644,6 +645,8 @@ int main() {
   lset orbits = computeOrbits(XXX, EQ);
   
   cout << "orbits: " << orbits << endl;
+  
+  showTimeElapsed();
 /*  ConstraintGraph I; //the CSP ConstraintGraph
   
   I.vertices = SETOF (newSet(a,b), a:A, b:A, a!=b);
