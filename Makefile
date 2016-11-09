@@ -1,6 +1,13 @@
 CFLAGS=-O3
 CC=g++
 
+FRAMEWORKS=/Library/Frameworks
+
+GECODEFLAGS=-Qunused-arguments -ffinite-math-only -fno-math-errno -fno-strict-aliasing -03 -fvisibility=hidden -ggdb -pipe -Wall -Wextra -fPIC -pthread -DNDEBUG
+COMPILER=$(CC)
+LINKER=$(CC)
+
+
 all: out/tutorial.txt out/autotest.txt out/mintest.txt
 
 bin/tutorial: include/lois.h tests/tutorial.cpp bin/liblois.a
@@ -72,6 +79,9 @@ bin/learning: tests/learning.cpp bin/liblois.a
 
 bin/csp: tests/csp.cpp bin/liblois.a
 	$(CC) -std=c++0x $(CFLAGS) tests/csp.cpp bin/liblois.a -o bin/csp
+	# ${COMPILER} -std=c++0x $(CFLAGS) -F${FRAMEWORKS} -framework gecode -Wfatal-errors ${GECODEFLAGS} -c csp.cpp
+	# ${LINKER} -o bin/csp  -F${FRAMEWORKS} bin/liblois.a -framework gecode csp.o
+	
 
 out/learning.txt: bin/learning
 	bin/learning > out/learning.txt

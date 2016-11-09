@@ -488,6 +488,8 @@ ConstraintGraph ConstraintGraph::quotient(const symmetry& sym)
   
   Q.vertex_orbits = computeOrbits(vertices, sym);
   
+  cout << "Orbits: " << Q.vertex_orbits << endl;
+  
   for(auto c: constraints)
     Q.addConstraint(c.first, as<eltuple> (c.second));
 
@@ -632,12 +634,22 @@ int main() {
 
   sym.neq = "≠";
       
-  ConstraintGraph I; //the CSP ConstraintGraph
+      
+  lset X = SETOF (newSet(a,b), a:A, b:A, a!=b);
   
-  // I.vertices = SETOF (newSet(a,b), a:A, b:A, a!=b);
-//   I.constraints = SETOF (Constraint(elem("NEQ"), eltuple({newSet(a,b), newSet(b,c)})), a:A, b:A, c:A, a!=c);
-  I.vertices = SETOF (a, a:A, true);
-  I.constraints = SETOF (Constraint(elem("Dom"), eltuple({a})), a:A, true);
+  lset XXX = cartesianPower(X,3);
+  
+  cout << "XXX: " << XXX << endl;
+  
+  lset orbits = computeOrbits(XXX, EQ);
+  
+  cout << "orbits: " << orbits << endl;
+/*  ConstraintGraph I; //the CSP ConstraintGraph
+  
+  I.vertices = SETOF (newSet(a,b), a:A, b:A, a!=b);
+  I.constraints = SETOF (Constraint(elem("NEQ"), eltuple({newSet(a,b), newSet(b,c)})), a:A, b:A, c:A, (a!=c) && (a!=b) && (b!=c));
+  // I.vertices = SETOF (a, a:A, true);
+  // I.constraints = SETOF (Constraint(elem("Dom"), eltuple({a})), a:A, true);
     
   std::cout << "THE INSTANCE: " << endl << I;
     
@@ -654,9 +666,9 @@ int main() {
   std::cout << "TERM CONSTRAINT GRAPH:" << endl << T;
   
   
-  // ConstraintGraph S = I.squash(EQ);
-  //
-  // std::cout << "TERM SQUASH:" << endl << S;
+  ConstraintGraph S = I.squash(EQ);
+
+  std::cout << "TERM SQUASH:" << endl << S;*/
   //
   // T = S.termTest(
   //   { IdentityTerm(0,{0,1}) == IdentityTerm(0,{1,0}) },
