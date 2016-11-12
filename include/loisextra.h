@@ -98,6 +98,11 @@ template<class T> inline lsetof<T> operator | (const lsetof<T>& x, const lsetof<
   for(elem e: y) xy += e;
   return xy;
   }
+  
+inline lset alpha(lset t, vptr v1, vptr v2) {
+   return asSet(elem(t)->alph(v1,v2));
+}
+
 
 // remove the repetitions: each element will be listed only once in the optimized set
 lset optimize(const lset& x);
