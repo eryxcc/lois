@@ -1063,7 +1063,7 @@ struct lset {
 
   lset(lset &&x) : ain(currentcontext) {
     if(x.ain == currentcontext) {
-      printf("quick move used\n");
+      // printf("quick move used\n");
       p = x.p;
       }
     else {
