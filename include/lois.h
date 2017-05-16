@@ -260,7 +260,7 @@ struct TermBinary : TermVariable {
   term left, right;
   vptr sublink;
   TermBinary(Relation *_r, int _op, const term& _left, const term& _right) : 
-    r(_r), left(_left), right(_right), op(_op) {
+    r(_r), op(_op), left(_left), right(_right) {
     curcheck = -1;
     if(left.p->getDom() != right.p->getDom()) throw domain_exception();
     }
@@ -513,7 +513,7 @@ struct CondIterator : ArbCondition {
 #define If(x) for(bool t ## __LINE__ : fmIf(x)) if(!t ## __LINE__); else
 #define Ife(x) for(bool t ## __LINE__ : fmIfe(x)) if(t ## __LINE__)
 #define While(x) \
-  for(bool& b ## __LINE__ : breakableIterator) \
+  for(bool& b ## __LINE__ : lois::breakableIterator) \
     for(bool t ## __LINE__ : fmWhile(x)) \
       if(t##__LINE__) b##__LINE__=false; else
 
@@ -1032,8 +1032,8 @@ struct lset {
   ESet* operator -> () const { return &(*p); }
   
   lset() { p = newInternalSet(); ain = currentcontext; }
-  lset(std::shared_ptr<struct ESet> e) : ain(currentcontext), p(e) {}
-  explicit lset(elem e) : ain(currentcontext), p(std::dynamic_pointer_cast<ESet>(e.p)) { if(!p) throw as_exception(); }
+  lset(std::shared_ptr<struct ESet> e) : p(e), ain(currentcontext) {}
+  explicit lset(elem e) : p(std::dynamic_pointer_cast<ESet>(e.p)), ain(currentcontext) { if(!p) throw as_exception(); }
 
   lset removeall();
   lset removeallnonset();
