@@ -1071,6 +1071,8 @@ struct lset {
       (*this) |= x;
       }
     }
+    
+    rbool isEmpty() { return *this == emptyset; }
   };
 
 inline elem::elem(const lset& s) : p(s.p) {}
