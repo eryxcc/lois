@@ -1111,7 +1111,7 @@ template<class T> std::ostream& operator << (std::ostream& os, const lsetof<T>& 
   }
 
 template<class T> lsetof<T> alpha(lsetof<T> A, vptr v1, vptr v2) {
-  return lsetof<T> (A.orig.alph(v1, v2));
+  return as<lsetof<T>>(A.orig.p->alph(v1,v2));
   }
 
 template<class T> bool isused(vptr v, lsetof<T> A) { return A.orig->uses(v); }
