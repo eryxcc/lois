@@ -292,12 +292,13 @@ struct SolverVerbose : Solver {
   solveptr s;
   
   virtual int solve(rbool phi) {
-    std::cout << msg << phi << std::endl;
+    std::cout << ido << msg << phi << std::endl;
     return s->solve(phi);
     }
   
   virtual int solveEnv() {
-    std::cout << msg << emptycontext << std::endl;
+    std::cout << ido << msg << emptycontext << std::endl;
+    std::cout << ido << msg << "OUTENV=" << outenv() << std::endl;
     return s->solveEnv();
     }
   
@@ -312,6 +313,7 @@ struct SolverNamed : Solver {
 //  std::cout << "trying " << name << ": " << phi << std::endl; fflush(stdout);
     long long t = getVa();
     int r = s->solve(phi);
+    std::cout << ido;
     printf("result of %s: %d, %10lld \u03bcs\n", name.c_str(), r, getVa() - t);
     return r;
     }
@@ -320,6 +322,7 @@ struct SolverNamed : Solver {
 //  std::cout << "trying " << name << ": " << emptycontext << std::endl; fflush(stdout);
     long long t = getVa();
     int r = s->solveEnv();
+    std::cout << ido;
     printf("result of %s: %d, %10lld \u03bcs\n", name.c_str(), r, getVa() - t);
     return r;
     }
@@ -668,6 +671,10 @@ solveptr solverBasic() {
  
 solveptr solverExhaustive(int t, bool v) { 
   return std::make_shared<SolverExhaustive> (t, v); 
+  }
+
+solveptr solverVerbose(std::string s, solveptr sv) { 
+  return std::make_shared<SolverVerbose> (s, sv); 
   }
 
 solveptr solverIncremental(std::string t) { 

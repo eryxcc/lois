@@ -4,157 +4,13 @@
 #include "../include/loisinternal.h"
 namespace lois {
 
-inline rbool operator == (eltuple a, eltuple b) { 
-  if(a.size() != b.size()) return ffalse;
-  rbool f = ftrue;
-  for(size_t i=0; i<a.size(); i++) if(!f.isFalse()) f = f && a[i] == b[i];
-  return f;
-  }
-
-rbool fless(eltuple a, eltuple b, size_t at) {
-  if(at >= b.size()) return ffalse;
-  if(at >= a.size()) return ftrue;
-  return a[at] < b[at] || (a[at] == b[at] && fless(a, b, at+1));
-  }
-
-rbool flesseq(eltuple a, eltuple b, size_t at) {
-  if(at >= a.size() && at >= b.size()) return ftrue;
-  if(at >= b.size()) return ffalse;
-  if(at >= a.size()) return ftrue;
-  return a[at] < b[at] || (a[at] == b[at] && flesseq(a, b, at+1));
-  }
-
-rbool operator <  (eltuple a, eltuple b) { return fless(a, b, 0); }
-rbool operator <= (eltuple a, eltuple b) { return flesseq(a, b, 0); }
-
-std::ostream& operator << (std::ostream& os, eltuple t) { 
-  os << "[";
-  for(size_t i=0; i<t.size(); i++) {
-    if(i) os << ", ";
-    os << t[i];
-    }
-  return os << "]";
-  }
-
-elem::elem(eltuple x) : p(elem(elof<eltuple> (x)).p) {}
-elem::elem(elpair x) : p(elem(elof<elpair> (x)).p) {}
-elem::elem(std::string x) { p = elem(elof<std::string> (x)).p; }
-elem::elem(int x) { 
-  using namespace orderedfield_ops;
-  if(mainField && mainDomain)
-    p = elem(elof<term> (mainField->constant(mainDomain, x))).p;
-  else
-    p = elem(elof<int> (x)).p;
-  }
-elem::elem(term x) : p(elem(elof<term> (x)).p) {}
-elem::elem(vptr x) : p(elem(elof<term> (term(x))).p) {}
-
 namespace orderedfield_ops {
   RelOrderedField *mainField;
   Domain *mainDomain;
   }
 
-struct pushcontext {
-  contextptr orig;
-  pushcontext(contextptr p) { orig = currentcontext; currentcontext = p; }
-  ~pushcontext() { currentcontext = orig; }
-  };
 
-
-lset lset::removeall() {
-  
-  lset xyes  = std::make_shared<ESet> ();
-  rbool phi = outenv(true, false, ain);
-
-  swap(xyes->elts, p->elts);
-
-  pushcontext pc(ain);
-  for(elem a: xyes) Ife(!phi) {
-    p->insert(a, ain);
-    }
-
-  return xyes;
-  }
-
-elem removeallnonset(elem x) {
-  /*
-  lset xs(x);
-  auto xset  = std::make_shared<ESet> ();
-
-  auto xyes  = std::make_shared<ESet> ();
-  rbool phi = outenv(true, false, xs->ain);
-  
-  for(size_t i=0; i<xs->elts.size(); i++) 
-    if(isSet(xs->elts[i].a))
-      xset->elts.emplace_back(xs->elts[i].var, xs->elts[i].phi, xs->elts[i].a);
-    else
-      xyes->elts.emplace_back(xs->elts[i].var, xs->elts[i].phi, xs->elts[i].a);
-
-  swap(xset->elts, xs->elts);
-
-  env = xs->ain;
-
-  for(elem a: xyes) Ife(!phi) {
-    xs->insert(a);
-    }
-
-  env = xyes->ain;
-
-  return elem(xyes); */
-  throw loisexception();
-  }
-
-lset& lset::operator -= (elem y) {
-  lset x1 = removeall();
-  p->insert(y, ain);
-  lset y1 = removeall();
-  for(elem e: x1) If(!memberof(e, y1)) p->insert(e, ain);
-  return (*this);
-  }
-
-lset& lset::operator &= (negated<lset> y) {
-  lset x1 = removeall();
-  (*this) |= y.original;
-  lset y1 = removeall();
-  for(elem e: x1) If(!memberof(e, y1)) p->insert(e, ain);
-  return (*this);
-  }
-
-lset& lset::operator &= (const lset& y) {
-  // does not work that easily:
-  // for(elem e: removeall(x)) If(e != y) x += e;
-  lset x1 = removeall();
-  (*this) += y;
-  lset y1 = removeall();
-  for(elem e: x1) {
-    lbool f(ftrue);
-    for(elem ye: y1) {
-      f &= memberof(e, asSet(ye));
-      }
-    If(f) (*this) += e;
-    }
-  return (*this);
-  }
-
-// remove the repetitions: each element will be listed only once in the optimized set
-lset optimize(const lset& x) {
-  lset y;
-  for(elem e: x) If(!memberof(e, y)) y += e;
-  return y;
-  }
-
-// optimize the elements of given type
-lset optimizeType(const lset& x, const lset& type) {
-  return (type & x) | (x &~ type);
-  }
-
-// the Cartesian product
-lset operator * (const lset& x, const lset& y) {
-  lset xy;
-  for(elem e: x) for(elem f: y) xy += elpair(e,f);
-  return xy;
-  }
-
+/*
 // the Cartesian product of more than 2
 template<class T> void cartesianRange(T beg, T end, eltuple& v, lset& cart) {
   if(beg == end) cart += v;
@@ -167,12 +23,15 @@ template<class T> void cartesianRange(T beg, T end, eltuple& v, lset& cart) {
     }
   }
 
+
 lset cartesian(std::initializer_list<elem> l, eltuple v) {
   lset cart;
   cartesianRange(l.begin(), l.end(), v, cart);
   return cart;
   }
+*/
 
+/*
 void cartesianPowerAux(const lset& x, eltuple& v, int left, lset& cart) {
   if(!left) cart += v;
   else for(elem a: x) {
@@ -187,6 +46,7 @@ lset cartesianPower(const lset& x, int power, eltuple v) {
   cartesianPowerAux(x, v, power, cart);
   return cart;
   }
+*/
 
 axiom::axiom(rbool phi) {
   if(!enable(phi)) throw unsatisfiable_exception();
@@ -194,11 +54,12 @@ axiom::axiom(rbool phi) {
 
 declareatom::declareatom(Domain *d, const std::string& s) {
   vptr v = newvar(d, s);
-  at = v;
+  at = term(v);
   if(!enable(varlist({v}), ftrue)) 
     throw unsatisfiable_exception();
   }
 
+/*
 lset& operator += (lset& A, const lelem& x) {
   for(elem e: newSet(x)) A += e;
   return A;
@@ -245,6 +106,7 @@ lset getorbit(elem what, std::initializer_list<Relation*> rels, contextptr nowco
   
   return X;
   }
+
 
 // singleton
 
@@ -320,5 +182,6 @@ lset getsingletonset(const lset& X) {
     
   return Result;
   }
+*/
 
 }

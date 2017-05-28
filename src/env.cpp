@@ -47,7 +47,10 @@ rbool outenv(rbool phi, bool universal, contextptr anccontext, contextptr nowcon
   
   qquery->setfv();
   
-  return qquery->simplify(qquery);
+  // std::cout << "Simplifying qquery: " << rbool(qquery) << std::endl;
+  auto q = qquery->simplify(qquery);
+  // std::cout << "Qquery simplified." << std::endl;
+  return q;
   }
 
 //==== condition ====
