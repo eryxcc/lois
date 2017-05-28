@@ -28,33 +28,33 @@ void testSat(int mode, rbool phi) {
   if(cnt != mode) exit(1);
   }
 
-Domain *getDomain(lset A) {
-  for(elem x:A) return as<term>(x).asVar()->getDom();
+Domain *getDomain(const lsetof<term>& A) {
+  for(term x:A) return x.asVar()->getDom();
   }
 
 // Test some basic properties of orders. In particular, we check 
 // whether a subset of A has exactly one supremum, unless empty or
 // unbounded.
 
-lelem max(lset X) { 
-  lset answer = newSet();
-  for(elem x: X) If(FORALL(y, X, x >= y)) answer += x;
+lelemof<term> max(const lsetof<term>& X) { 
+  lsetof<term> answer;
+  for(term x: X) If(FORALL(y, X, x >= y)) answer += x;
   return extract(answer);
   }
 
-lelem min(lset X) { 
-  lset answer = newSet();
-  for(elem x: X) If(FORALL(y, X, x <= y)) answer += x;
+lelemof<term> min(const lsetof<term>& X) { 
+  lsetof<term> answer;
+  for(term x: X) If(FORALL(y, X, x <= y)) answer += x;
   return extract(answer);
   }
 
-lelem supremum(lset X, lset domain) { 
-  return min(FILTER(m, domain, FORALL(x, X, m >= x)));
+lelemof<term> supremum(const lsetof<term>& X, const lsetof<term>& domain) { 
+  return min(FILTER(m, domain, FORALL(x, X, m >= x), term));
   }
 
-void testOrder(lset A) {
+void testOrder(const lsetof<term>& A) {
 
-  for(elem a: A) for(elem b: A) for(elem c: A) {
+  for(term a: A) for(term b: A) for(term c: A) {
     rbool phi = (a<b);
     cout << phi << endl;
 
@@ -66,31 +66,31 @@ void testOrder(lset A) {
     testSat(MAYBE, a<c && c<b);
     testSat(MAYBE, b<c && c<a);
 
-    lset three = newSet({a,b,c});
-    lelem mx = max(three);
+    lsetof<term> three = newSet<term>({a,b,c});
+    lelemof<term> mx = max(three);
     // cout << "max(" << three << ") = " << mx << endl;
 
-    lelem sup = supremum(three, A);
+    lelemof<term> sup = supremum(three, A);
     // cout << "supremum = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
     testSat(ALWAYS, sup == mx);
     }
 
-  for(elem a: A) for(elem b: A) If(a<b) {
-    lelem sup = supremum(newSet(a,b), A);
+  for(term a: A) for(term b: A) If(a<b) {
+    lelemof<term> sup = supremum(newSet(a,b), A);
     // cout << "sup(a,b) = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
     }
   
-  for(elem a: A) for(elem b: A) If(a<b) {
-    lset interval = FILTER(z, A, a<z && z<b);
-    lelem sup = supremum(interval, A);
+  for(term a: A) for(term b: A) If(a<b) {
+    lsetof<term> interval = FILTER(z, A, a<z && z<b, term);
+    lelemof<term> sup = supremum(interval, A);
     // cout << "sup(interval) = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
 //  testSat(ALWAYS, card(sup) == 1);
     }
 
-  lelem sup = supremum(A, A);
+  lelemof<term> sup = supremum(A, A);
   
   // cout << "sup(A) = " << sup << endl;
   testSat(ALWAYS, cardinality(newSet(sup)) == 0);
@@ -99,7 +99,7 @@ void testOrder(lset A) {
 // test whether the 'queue' semantics of the 'for' loop works, as
 // advertised in the paper.
 
-void testQueue(lset A) {
+void testQueue(const lsetof<term>& A) {
   lsetof<int> N;
   N += 0;
   for(int n: N) if(n < 10) N += (n+1);
@@ -110,15 +110,15 @@ void testQueue(lset A) {
 // test whether the "-=" operator works in the natural way, as
 // advertised in the paper.
 
-void testRemoval(lset A) {
-  lset X, Y;
+void testRemoval(const lsetof<term>& A) {
+  lsetof<lpair<term,term>> X, Y;
   
-  for(elem a: A) for(elem b: A) {
-    X += elpair(a, b);
-    If(a != b) Y += elpair(a, b);
+  for(term a: A) for(term b: A) {
+    X += make_lpair(a, b);
+    If(a != b) Y += make_lpair(a, b);
     }
   
-  for(elem a: A) X -= elpair(a, a);
+  for(term a: A) X -= make_lpair(a, a);
   
   testSat(ALWAYS, X == Y);
   }
@@ -126,11 +126,11 @@ void testRemoval(lset A) {
 // test whether an improper assignment throws an exception, as
 // mentioned in the paper.
 
-void testAssignment(lset A) {
+void testAssignment(const lsetof<term>& A) {
   lbool phi;
   
   try {
-    for(elem a: A) for(elem b: A) phi = (a==b);
+    for(term a: A) for(term b: A) phi = (a==b);
   } catch(assignment_exception e) {
     printf("passed: assignment_exception\n");
     }
@@ -138,39 +138,41 @@ void testAssignment(lset A) {
 
 // reachability test
 
-lset reach(rsetof<elpair> E, lset S) {
-  lset R = S;
-  lset P;
+template<class A> lsetof<A> reach(const lsetof<lpair<A,A>>& E, const lsetof<A>& S) {
+  lsetof<A> R = S;
+  lsetof<A> P;
   While (P!=R) {
     P = R;
-    for (elpair e: E) 
+    for (auto e: E) 
       If (memberof(e.first, R))
         R += e.second;
   }
   return R;
 }
 
-void testReachable(lset A) {
+void testReachable(const lsetof<term>& A) {
 
-  lsetof<elpair> Pairs;
+  typedef lpair<term, term> vertex;
+
+  lsetof<vertex> Pairs;
      
-  for(elem a: A) for(elem b: A) 
-    Pairs += elpair(a,b);
+  for(term a: A) for(term b: A) 
+    Pairs += make_lpair(a,b);
 
-  lsetof<elpair> E;
+  lsetof<lpair<vertex, vertex>> E;
   
-  for(elpair x: Pairs) 
-    for (elpair y: Pairs)
+  for(auto x: Pairs) 
+    for (auto y: Pairs)
       If ((x.second == y.first)
         && ((y.second != x.first)))
-        E += elpair(x,y);
+        E += make_lpair(x,y);
   
   cout << E << endl;
 
   for(auto a: A) for(auto b: A) If(a!=b) {
 
-    elpair s = elpair(a,b);
-    elpair t = elpair(b,a);
+    auto s = make_lpair(a,b);
+    auto t = make_lpair(b,a);
     
     If (memberof(t, reach(E, newSet(s))))
       cout << "Reached" << endl;
@@ -178,7 +180,9 @@ void testReachable(lset A) {
   }
 
 // minimalization test
+// not yet updated for static typing
 
+/*
 void minimalize1(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
@@ -198,9 +202,9 @@ void minimalize1(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
     
     lset neq;
     
-    for(elem q1: Q) for(elem q2: Q) If(memberof(elpair(q1,q2), eq)) {
+    for(term q1: Q) for(term q2: Q) If(memberof(elpair(q1,q2), eq)) {
       lbool b = true;
-      for(elem x: alph) for(eltuple t1: delta) for(eltuple t2: delta)
+      for(term x: alph) for(eltuple t1: delta) for(eltuple t2: delta)
         If(t1[0] == q1 && t1[1] == x && t2[0] == q2 && t2[1] == x)
           If(!memberof(elpair(t1[2], t2[2]), eq))
             b = ffalse;
@@ -215,9 +219,9 @@ void minimalize1(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
   
   lset classes;
   
-  for(elem a: Q) {
+  for(term a: Q) {
     lset t;    
-    for(elem b: Q) If(memberof(elpair(a,b), eq)) 
+    for(term b: Q) If(memberof(elpair(a,b), eq)) 
       t += b;
     classes += t;
     }
@@ -246,10 +250,10 @@ void minimalize2(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
     cout << "classes = " << classes << endl << endl;
     cont = ffalse;
     
-    for(elem EC: classes) {
-      for(elem q1: EC) {
+    for(term EC: classes) {
+      for(term q1: EC) {
         lset EC1;
-        for(elem q2: EC) {
+        for(term q2: EC) {
           lbool b = true;
           for(eltuple t1: delta) for(eltuple t2: delta) 
             If(t1[0] == q1 && t2[0] == q2 && t1[1] == t2[1])
@@ -274,8 +278,8 @@ void minimalize2(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
 void minimalize3(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
   
   lsetof<elpair> E;
-  for(elem p: Q) for(elem q: Q) for(elem a: alph) 
-    for(elem pbis: Q) for(elem qbis: Q) 
+  for(term p: Q) for(term q: Q) for(term a: alph) 
+    for(term pbis: Q) for(term qbis: Q) 
        If(memberof(eltuple({p,a,pbis}), delta) && memberof(eltuple({q,a,qbis}), delta))
          E += elpair(elpair(pbis,qbis), elpair(p,q));
 
@@ -284,23 +288,23 @@ void minimalize3(lset Q, lset F, rsetof<eltuple> delta, lset alph) {
   
   lset classes;
   
-  for(elem q: Q) {
+  for(term q: Q) {
     lset qclass;
-    for(elem p: Q) If(memberof(elpair(p,q), equiv)) qclass += p;
+    for(term p: Q) If(memberof(elpair(p,q), equiv)) qclass += p;
     classes += qclass;
     }
   
   cout << "classes: " << classes << endl;  
   }
 
-void mtestA(lset A, int id) {
+void mtestA(lsetof<term>& A, int id) {
   lset Q;
   lset F;
   lsetof<eltuple> delta;
   
   lset R;
 
-//   for (elem x:A) for (elem y:A) {
+//   for (term x:A) for (term y:A) {
 //     elem u=elpair(x,y);
 //     If (x==y)
 // 		R+= elpair(x,y);
@@ -314,41 +318,35 @@ void mtestA(lset A, int id) {
   lset alph = A;
 
   Q += 0;
-  for(elem a: A) Q += eltuple({a});
-  for(elem a: A) for(elem b: A) Q += eltuple({a, b});
-  for(elem a: A) for(elem b: A) for(elem c: A) Q += eltuple({a, b, c});
+  for(term a: A) Q += eltuple({a});
+  for(term a: A) for(term b: A) Q += eltuple({a, b});
+  for(term a: A) for(term b: A) for(term c: A) Q += eltuple({a, b, c});
   Q += 4;
   
-  for(elem a: A) for(elem b: A) for(elem c: A) 
+  for(term a: A) for(term b: A) for(term c: A) 
     If(a==b || a==c || b==c) F += eltuple({a,b,c});
     
-  for(elem x: A) {
+  for(term x: A) {
     delta += eltuple({elof(0),x,elof(eltuple({x}))});
 
-    for(elem a: A)
+    for(term a: A)
       delta += eltuple({elof(eltuple({a})),x,elof(eltuple({a,x}))});
 
-    for(elem a: A) for(elem b: A)
+    for(term a: A) for(term b: A)
       delta += eltuple({elof(eltuple({a,b})),x,elof(eltuple({a,b,x}))});
 
-    for(elem a: A) for(elem b: A) for(elem c: A)
+    for(term a: A) for(term b: A) for(term c: A)
       delta += eltuple({elof(eltuple({a,b,c})),x,elof(4)});
 
     delta += eltuple({elof(4),x,elof(4)});
     }
-
-  /* Q += 0; Q += 1; Q += 2; Q += 3; F += 0; F += 2; F += 1;
-  for(elem x: A) delta += eltuple({elof(0), x, elof(1)});
-  for(elem x: A) delta += eltuple({elof(1), x, elof(2)});
-  for(elem x: A) delta += eltuple({elof(2), x, elof(3)});
-  for(elem x: A) delta += eltuple({elof(3), x, elof(0)}); */
 
   if(id == 1) minimalize1(Q, F, delta, alph);
   if(id == 2) minimalize2(Q, F, delta, alph);
   if(id == 3) minimalize3(Q, F, delta, alph);
   }
 
-void mtestB(lset A, int id) {
+void mtestB(lsetof<term>& A, int id) {
   RelInt real(sym.greater, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
   Domain *d = getDomain(A);
@@ -356,17 +354,17 @@ void mtestB(lset A, int id) {
   term r0 = real.constant(d, 0);
   term r3 = real.constant(d, 3);
 
-  lset Nat = FILTER(x, A, x >= r0);
+  lset Nat = FILTER(x, A, x >= r0, term);
   
   lset alph = Nat; alph += '$';
   lset Q = Nat * Nat;
   lset F = newSet(r3) * Nat;
   lsetof<eltuple> delta;
-  for(elem p: Q) {
+  for(term p: Q) {
     term m = as<term>(as<elpair> (p).first);
     term n = as<term>(as<elpair> (p).second);
     delta += eltuple({p, '$', elpair(m, r0)});
-    for(elem x: Nat)
+    for(term x: Nat)
       delta += eltuple({p, x, elpair(real.max(m, real.plus(n, as<term>(x))), real.plus(n, as<term>(x)))});
     }
   
@@ -386,9 +384,11 @@ void testMinimizeB1(lset A) { mtestB(A, 1); }
 void testMinimizeB2(lset A) { mtestB(A, 2); }
 
 void testMinimizeB3(lset A) { mtestB(A, 3); }
+*/
+
 // testReal
 
-void testInt(lset A) { 
+void testInt(lsetof<term>& A) { 
   string symg = "gt";
   RelInt rint(symg, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   Domain *D = getDomain(A);
@@ -397,18 +397,24 @@ void testInt(lset A) {
   using namespace orderedfield_ops;
   mainOrder = mainField = &rint; mainDomain = getDomain(A);
 
-  lset odd;
-  for(elem x: A) odd += 1 + 2 * x;
-  lset z;
-  for(elem x: odd) If(5 < x) z += x + 1;
+  term c1 = rint.constant(mainDomain, 1);
+  term c2 = rint.constant(mainDomain, 2);
+  term c5 = rint.constant(mainDomain, 5);
+  term c8 = rint.constant(mainDomain, 8);
+  term c9 = rint.constant(mainDomain, 9);
+
+  lsetof<term> odd;
+  for(term x: A) odd += c1 + c2 * x;
+  lsetof<term> z;
+  for(term x: odd) If(c5 < x) z += x + c1;
   cout << z << endl;
-  If(memberof(8, z)) cout << "eight in the set" << endl;
-  If(memberof(9, z)) cout << "nine in the set" << endl;
+  If(memberof(c8, z)) cout << "eight in the set" << endl;
+  If(memberof(c9, z)) cout << "nine in the set" << endl;
 
   mainOrder = ord;
   }
 
-void testReal(lset A) { 
+void testReal(lsetof<term>& A) { 
   string symg = "gt";
   RelReal real(symg, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
@@ -418,10 +424,14 @@ void testReal(lset A) {
   using namespace orderedfield_ops;
   mainOrder = mainField = &real; mainDomain = getDomain(A);
 
-  for(elem x: A) {
+  term c2 = real.constant(mainDomain, 2);
+  term c4 = real.constant(mainDomain, 4);
+  term c5 = real.constant(mainDomain, 5);
+
+  for(term x: A) {
     lbool b = false;
 
-    b |= (x >= 4 && x <= elem(5) - 2);
+    b |= (x >= c4 && x <= c5 - c2);
 
     cout << "b = " << b << endl;
 
@@ -434,23 +444,23 @@ void testReal(lset A) {
 
 // packings on an interval
 
-lset packings(lset F, RelReal& real, term radius) {
-  lset done;
-  lset active = newSet(emptyset);
+lsetof<lsetof<term>> packings(lsetof<term>& F, RelReal& real, term radius) {
+  lsetof<lsetof<term>> done;
+  lsetof<lsetof<term>> active = newSet(newSet<term>({}));
 
   for (auto P: active) {    
     cout << "Considering " << P << " where " << emptycontext << endl;
-    lset N;
+    lsetof<term> N;
         
-    for (elem x: P) for(elem y: F)
-      If(y > real.minus(as<term>(x), radius) && y < real.plus(as<term>(x), radius))
+    for (term x: P) for(term y: F)
+      If(y > real.minus(x, radius) && y < real.plus(x, radius))
         N += y;
     
     Ife (F == N)
       done += P;
     else
-      for (elem x: F) If(!memberof(x, N)) {
-        lset newP = (asSet(P) | newSet(x));
+      for (term x: F) If(!memberof(x, N)) {
+        lsetof<term> newP = P | newSet<term>(x);
         active += newP;
         }
 
@@ -459,28 +469,32 @@ lset packings(lset F, RelReal& real, term radius) {
   return done;
   } 
 
-void testPacking(lset A) {
+void testPacking(lsetof<term>& A) {
   RelReal real(sym.greater, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
   Domain *d = getDomain(A);
 
-  lset F;
+  lsetof<term> F;
 
   RelOrder *ord = mainOrder;
   using namespace orderedfield_ops;
   mainOrder = mainField = &real; mainDomain = getDomain(A);
 
-  for(elem x: A) If(x>0 && x<5) F += x;
+  term c0 = real.constant(mainDomain, 0);
+  term c1 = real.constant(mainDomain, 1);
+  term c5 = real.constant(mainDomain, 5);
+
+  for(term x: A) If(x>c0 && x<c5) F += x;
 
   cout << "F = " << F << endl;
 
-  lset pack = packings(F, real, real.constant(d, 1));
+  auto pack = packings(F, real, c1);
 
   cout << "packings = " << pack << endl;
 
   for(int i=0; i<9; i++)
     for(auto P: pack) {
-      If(cardinality(asSet(P)) == i)
+      If(cardinality(P) == i)
         cout << "There is a packing of size " << i << endl;
       }
 
@@ -492,17 +506,17 @@ void testPacking(lset A) {
 // Requires NRA, and z3 does not know whether it is possible to fit two points in
 // distance at least 3 in a circle of radius 1 anyway...
 
-typedef elpair point;
+typedef lpair<term,term> point;
 
-term getX(elpair p) { return as<term> (p.first); }
-term getY(elpair p) { return as<term> (p.second); }
+term getX(point p) { return p.first; }
+term getY(point p) { return p.second; }
 
-rsetof<rsetof<point>> circlepackings(rsetof<point> F, RelReal& real, term mindist) {
-  lsetof<rsetof<point>> done;
-  lsetof<rsetof<point>> active;
-  active += emptyset;
+lsetof<lsetof<point>> circlepackings(lsetof<point> F, RelReal& real, term mindist) {
+  lsetof<lsetof<point>> done;
+  lsetof<lsetof<point>> active;
+  active += newSet<point>({});
 
-  for (rsetof<point> P: active) {
+  for (auto P: active) {
     cout << "Considering " << P << " where " << emptycontext << endl;
     lsetof<point> N;
         
@@ -530,7 +544,7 @@ rsetof<rsetof<point>> circlepackings(rsetof<point> F, RelReal& real, term mindis
   return done;
   } 
 
-void testCirclePacking(lset A) {
+void testCirclePacking(const lsetof<term>& A) {
   RelReal real(sym.greater, sym.leq, sym.max, sym.min, sym.plus, sym.times, sym.minus, sym.divide);
   pushorder po(&real);
   Domain *d = getDomain(A);
@@ -540,22 +554,20 @@ void testCirclePacking(lset A) {
   term mindist = real.constant(d, 3);
   term bigradius = real.constant(d, 1);
 
-  for(elem x: A) for(elem y: A) {
-    term tx = as<term> (x);
-    term ty = as<term> (y);
-    If(real.plus(real.times(tx, tx), real.times(ty, ty)) <= real.times(bigradius, bigradius))
-      F += make_pair(tx, ty);
+  for(term x: A) for(term y: A) {
+    If(real.plus(real.times(x, x), real.times(y, y)) <= real.times(bigradius, bigradius))
+      F += make_lpair(x, y);
     }
 
   cout << "F = " << F << endl;
 
-  lset pack = circlepackings(F, real, mindist);
+  auto pack = circlepackings(F, real, mindist);
 
   cout << "circle packings = " << pack << endl;
 
   for(int i=0; i<19; i++)
     for(auto P: pack) {
-      If(cardinality(asSet(P)) == i)
+      If(cardinality(P) == i)
         cout << "There is a circle packing of size " << i << endl;
       }
   }
@@ -568,7 +580,7 @@ long long getVa() {
   return tval.tv_sec * 1000000 + tval.tv_usec;
   }
 
-typedef void loistest(lset A);
+typedef void loistest(const lsetof<term>& A);
 
 std::string whichSolver;
 
@@ -694,7 +706,7 @@ void testSolvers(const char* name, loistest test) {
     printf("TEST %s, SOLVER %s\n", name, whichSolver.c_str());
     fflush(stdout);
     Domain dA("A");
-    lset A = dA.getSet();
+    auto A = dA.getSet();
 
     for(int i=0; i<9; i++) elapsed[i] = queries[i] = 0;
 
@@ -752,10 +764,11 @@ int main() {
   testSolvers("order", testOrder);
   testSolvers("reachable", testReachable);
 
+/*
   testSolvers("minimizeA3", testMinimizeA3);
   testSolvers("minimizeA1", testMinimizeA1);
   testSolvers("minimizeA2", testMinimizeA2);
-
+*/
 
   fclose(outtable);
   fclose(outparse);

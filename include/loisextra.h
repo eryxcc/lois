@@ -74,7 +74,7 @@ template<class T> struct lvector {
   const T& operator [] (int i) const { return inner[i]; }
   };
 
-template<class T>  bool isused(vptr v, lvector<T> p) { 
+template<class T>  bool isused(vptr v, const lvector<T>& p) { 
   for(auto& el: p.inner) if(isused(v, el)) return true;
   return false;
   }
@@ -328,6 +328,12 @@ template<class T> inline rbool operator == (const lelemof<T>& a, const T& b)
   { return a.singleton == newSet(b); }
 
 template<class T> inline rbool operator != (const lelemof<T>& a, const T& b) 
+  { return a.singleton != newSet(b); }
+
+template<class T> inline rbool operator == (const T& b, const lelemof<T>& a) 
+  { return a.singleton == newSet(b); }
+
+template<class T> inline rbool operator != (const T& b, const lelemof<T>& a) 
   { return a.singleton != newSet(b); }
 
 template<class T> rbool operator > (const lelemof<T>& a, const lelemof<T>& b) {
