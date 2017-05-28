@@ -7,11 +7,10 @@ struct elem {
   elem(std::shared_ptr<struct Element> e) : p(e) {}
   elem() {}
   Element* operator -> () const { return &(*p); }
-  elem(std::shared_ptr<struct ESet> s);
-  elem(int);
-  elem(std::string);
-  elem(vptr);
-  elem(term);
+//  elem(int);
+//  elem(std::string);
+//  elem(vptr);
+//  elem(term);
   };
 
 extern const elem nullelem;
@@ -42,13 +41,14 @@ inline rbool operator >= (elem x, elem y) { return (*(y.p)) <= (*(x.p)); }
 
 inline bool isused(vptr v, elem e) { return e->uses(v); }
 
-inline std::ostream& operator << (std::ostream& os, elem a) { return a->display(os); }
+inline std::ostream& operator << (std::ostream& os, elem a) { os << "[."; a->display(os); return os << ".]"; }
 
 template<class T> struct ElementOf: Element {
   T data;
-  explicit ElementOf(T&& tmp, int) : data(tmp) {}
-  explicit ElementOf(const T& tmp, int) : data(tmp) {}
-  ElementOf(T tmp) : data(tmp) {}
+//  explicit ElementOf(T&& tmp, int) : data(tmp) {}
+//  explicit ElementOf(const T& tmp, int) : data(tmp) {}
+  explicit ElementOf(T&& tmp) : data(tmp) {}
+  explicit ElementOf(const T& tmp) : data(tmp) {}
   std::ostream& display (std::ostream &os) const { return os << data; }
   virtual elem subst(const varsubstlist& l) const { 
     return elem(std::make_shared<ElementOf> (substitute(data, l)));
@@ -78,8 +78,8 @@ template<class T> struct ElementOf: Element {
 
 // encapsulate T as ElementOf<T>
 
-template<class T> elem elof(const T& x) { return elem(std::make_shared<ElementOf<T>> (x)); }
-template<class T> elem elof(T&& x) { return elem(std::make_shared<ElementOf<T>> (x)); }
+template<class T> elem elof(T x) { return elem(std::make_shared<ElementOf<T>> (x)); }
+// template<class T> elem elof(T&& x) { return elem(std::make_shared<ElementOf<T>> (x)); }
 
 // ElementOf<T> back to T
 template<class T> T& as(elem a) {
@@ -97,5 +97,6 @@ template<class T> bool is(elem a) {
 inline elem substitute(elem x, const varsubstlist& l) { return x.p->subst(l); }
 
 typedef lsetof<elem> lset;
+typedef lelemof<elem> lelem;
 
 }
