@@ -200,7 +200,7 @@ struct FormulaBinary : Formula {
   int id;
   Relation *rel;
   term t1, t2;
-  FormulaBinary(Relation *r, int i, term v1, term v2) : rel(r), id(i), t1(v1), t2(v2) {
+  FormulaBinary(Relation *r, int i, term v1, term v2) : id(i), rel(r), t1(v1), t2(v2) {
     /* if(v1->sortid < v2->sortid) {
       fv.push_back(v1);
       fv.push_back(v2);

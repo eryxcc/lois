@@ -268,7 +268,7 @@ struct TermBinary : TermVariable {
   term left, right;
   vptr sublink;
   TermBinary(Relation *_r, int _op, const term& _left, const term& _right) : 
-    r(_r), left(_left), right(_right), op(_op) {
+    r(_r), op(_op), left(_left), right(_right) {
     curcheck = -1;
     if(left.p->getDom() != right.p->getDom()) throw domain_exception();
     }
@@ -517,7 +517,7 @@ struct CondIterator : ArbCondition {
 #define If(x) for(bool t ## __LINE__ : fmIf(x)) if(!t ## __LINE__); else
 #define Ife(x) for(bool t ## __LINE__ : fmIfe(x)) if(t ## __LINE__)
 #define While(x) \
-  for(bool& b ## __LINE__ : breakableIterator) \
+  for(bool& b ## __LINE__ : lois::breakableIterator) \
     for(bool t ## __LINE__ : fmWhile(x)) \
       if(t##__LINE__) b##__LINE__=false; else
 
@@ -931,6 +931,8 @@ template<class T> struct lsetof {
       (*this) |= x;
       }
     }
+    
+  rbool isEmpty() { lbool any = ftrue; for(auto x: *this) any = ffalse; return any; }
   };
 
 template<class T> rbool isempty(lsetof<T>& what) {
