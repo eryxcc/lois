@@ -25,7 +25,7 @@ struct FormulaFixed : Formula {
     if(outlan == CVC3) return os << (type ? "(1=1)" : "(1=0)");
     return os << (type ? "true" : "false"); 
     }
-  virtual rbool alph(vptr v1, vptr v2) const { return type ? ftrue : ffalse; }
+  virtual rbool subst(const varsubstlist& l) const { return type ? ftrue : ffalse; }
   rbool negate() { return type ? ffalse : ftrue; }
   bool verify() { 
 #ifdef AGGSYM
@@ -51,6 +51,7 @@ rbool ffalse(std::make_shared<FormulaFixed> (false));
 struct FormulaBi : Formula {
   bool type;
   rbool left, right;
+  vptr lastusecheck; int usestat;  
   FormulaBi(bool t, rbool l, rbool r) : type(t), left(l), right(r) {
     // vl_merge(fv, left->fv, right->fv);
     }
@@ -71,9 +72,19 @@ struct FormulaBi : Formula {
     return display(os); 
     }
 
-  virtual rbool alph(vptr v1, vptr v2) const { 
-    if(type) return left->alph(v1,v2) && right->alph(v1,v2);
-    return left->alph(v1,v2) || right->alph(v1,v2);
+  virtual rbool subst(const varsubstlist& l) const { 
+    if(l.size() == 1 && l[0].first == lastusecheck && usestat < 3) {
+      if(usestat == 1 && type)
+        return substitute(left, l) && right;
+      if(usestat == 1 && !type)
+        return substitute(left, l) || right;
+      if(usestat == 2 && type)
+        return left && substitute(right, l);
+      if(usestat == 2 && !type)
+        return left || substitute(right, l);
+      }
+    if(type) return substitute(left, l) && substitute(right, l);
+    return substitute(left, l) || substitute(right, l);
     // make_shared<FormulaBi> (type, left->alph(v1,v2), right->alph(v1,v2));
     }
   rbool negate() {
@@ -88,19 +99,24 @@ struct FormulaBi : Formula {
 #endif
     return b;
     }
-  bool uses(vptr v) { return left->uses(v) || right->uses(v); }
-  vptr valueKnown(vptr v, bool negated) { 
+  bool uses(vptr v) { 
+    if(v == lastusecheck) return usestat;
+    lastusecheck = v; usestat = 0;
+    if(left->uses(v)) usestat |= 1;
+    if(right->uses(v)) usestat |= 2;
+    return usestat; }
+  term valueKnown(vptr v, bool negated) { 
     // non-negated: AND => at least one
     if(negated == type) {
       // OR: both need the same value
-      vptr v1 = left->valueKnown(v, negated);
-      vptr v2 = right->valueKnown(v, negated);
-      if(v1 ==v2) return v1;
-      return nullvptr;
+      term v1 = left->valueKnown(v, negated);
+      term v2 = right->valueKnown(v, negated);
+      if(v1.p == v2.p) return v1;
+      return nullterm;
       }
     else {
-      vptr v1 = left->valueKnown(v, negated);
-      if(v1) return v1;
+      term v1 = left->valueKnown(v, negated);
+      if(v1.p) return v1;
       return right->valueKnown(v, negated);
       }
     }
@@ -146,10 +162,10 @@ struct FormulaEq : Formula {
 
     return os << t1 << (type ? sym.eq : sym.neq) << t2;
     }
-  virtual rbool alph(vptr v1, vptr v2) const { 
+  virtual rbool subst(const varsubstlist& l) const { 
     if(type)
-      return t1.p->alphterm(t1,v1,v2) == t2.p->alphterm(t2,v1,v2);
-    return t1.p->alphterm(t1,v1,v2) != t2.p->alphterm(t2,v1,v2);
+      return substitute(t1, l) == substitute(t2, l);
+    return substitute(t1, l) != substitute(t2, l);
     }
   rbool negate() { return rbool(std::make_shared<FormulaEq> (!type, t1, t2)); }
   bool verify() { 
@@ -162,13 +178,13 @@ struct FormulaEq : Formula {
     return b;
     }
   bool uses(vptr v) { return t1.p->uses(v) || t2.p->uses(v); }
-  vptr valueKnown(vptr v, bool negated) { 
+  term valueKnown(vptr v, bool negated) { 
     // non-negated: AND => at least one
     if(negated == !type) {
-      if(t1.asVar() == v && t2.asVar()) return t2.asVar();
-      if(t2.asVar() == v && t1.asVar()) return t1.asVar();
+      if(t1.asVar() == v && t2.asVar()) return term(t2.asVar());
+      if(t2.asVar() == v && t1.asVar()) return term(t1.asVar());
       }
-    return nullvptr;
+    return nullterm;
     }
 #ifdef AGGSYM
   rbool qsimplify2() {
@@ -198,8 +214,8 @@ struct FormulaBinary : Formula {
     rel->display(os, id, t1, t2);
     return os;
     }
-  rbool alph(vptr v1, vptr v2) const { 
-    return rel->binform(id, alpha(t1,v1,v2), alpha(t2,v1,v2));
+  rbool subst(const varsubstlist& l) const { 
+    return rel->binform(id, substitute(t1,l), substitute(t2,l));
     }
   rbool negate() { return rel->binform(rel->negate(id), t1, t2); }
   bool verify() { 
@@ -214,8 +230,8 @@ struct FormulaBinary : Formula {
     return b;
     }
   bool uses(vptr v) { return t1.p->uses(v) || t2.p->uses(v); }
-  vptr valueKnown(vptr v, bool negated) { 
-    return nullvptr;
+  term valueKnown(vptr v, bool negated) { 
+    return nullterm;
     }
 #ifdef AGGSYM
   rbool qsimplify2() {
@@ -293,6 +309,7 @@ void decomposeBin(rbool b, bool bt, std::vector<rbool>& v) {
 
 rbool FormulaQ::simplify(std::shared_ptr<FormulaQ> def) {
   
+  using namespace std;
   // we know the value of something, maybe?
   for(size_t i=0; i<var.size(); i++) {
     vptr v = var[i];
@@ -301,9 +318,9 @@ rbool FormulaQ::simplify(std::shared_ptr<FormulaQ> def) {
       var.pop_back(); i--;
       }
     else {
-      vptr v1 = right->valueKnown(v, type);
-      if(v1) {
-        right = right->alph(v, v1);
+      term v1 = right->valueKnown(v, type);
+      if(v1.p) {
+        right = substitute(right, v, v1);
         var[i] = var[var.size()-1];
         var.pop_back(); i--;
         }
@@ -421,17 +438,17 @@ bool FormulaQ::generateAll(int at, std::shared_ptr<Subdomain>& dom, int val, int
   else return dom->rels[rid]->exists(this, at, dom, val, rid);
   }
 
-vptr FormulaQ::valueKnown(vptr v, bool negated) {
-  vptr v1 = right->valueKnown(v, negated);
-  if(!v1) return v1;
-  for(auto qx: var) if(qx == v1) {
+term FormulaQ::valueKnown(vptr v, bool negated) {
+  term v1 = right->valueKnown(v, negated);
+  if(!v1.p) return v1;
+  for(auto qx: var) if(qx == v1.asVar()) {
     // should not happen if simplified!
     std::cout << "should not happen: v= " <<v << " rbool= ";
     display(std::cout); std::cout << std::endl;
-    vptr vk = right->valueKnown(v1, type);
-    if(vk == nullvptr) std::cout << "value unknown!" << std::endl;
+    term vk = right->valueKnown(qx, type);
+    if(!vk.p) std::cout << "value unknown!" << std::endl;
     else std::cout << "valueKnown is " << vk <<std::endl;
-    return nullvptr;
+    return nullterm;
     }
   return v1;
   }
@@ -641,14 +658,14 @@ term::term(tvptr v) : p(v) {}
 
 std::ostream& operator << (std::ostream& os, vptr a) { return a->display(os); }
 
-vptr alpha(vptr vthis, vptr v1, vptr v2) {
-  if(vthis == v1) { return v2;}
-  return vthis;
+term substitute(vptr vthis, const varsubstlist& l) {
+  for(auto& p: l) if(vthis == p.first) return p.second;
+  return term(vthis);
   }
 
 // alpha-convert the term 'tthis' from 'v1' to 'v2'
-term alpha(term tthis, vptr v1, vptr v2) {
-  return tthis.p->alphterm(tthis, v1, v2);
+term substitute(const term& tthis, const varsubstlist& l) {
+  return tthis.p->subst(tthis, l);
   }
 
 bool isused(vptr vthis, vptr v) {
@@ -681,5 +698,21 @@ void vl_split(varlist& vres, const varlist& v1, const varlist& v2) {
   }
 */
 
+rbool makequantifier(bool f, rbool& phi, varlist to_quantify) {
+  auto sphi = std::make_shared<FormulaQ> (f, phi, to_quantify);
+  return sphi->simplify(sphi);
+  }
+
+rbool substitute(const rbool& phi, const varsubstlist& l) {
+  return phi->subst(l);
+  }
+
+term valueKnown(rbool& phi, vptr v, bool negated) {
+  return phi->valueKnown(v, negated);
+  }
+
+const term nullterm;
+
 }
+
 
