@@ -74,8 +74,8 @@ FUNCTION("main_old")
 int main() {
 SECTION("main")
 initLois();
-//sym.useLaTeX();
-sym.useUnicode();
+sym.useLaTeX();
+//sym.useUnicode();
 SECTION("domain")
 Domain dA("\\mathbb{A}");  
 lsetof<term> A = dA.getSet();
@@ -371,20 +371,20 @@ SECTION("displaycontext")
     }
 
 SECTION("lnumtest")
-/*
+
   for(auto a: A) for(auto b: A) {
 
-    as<term>(a).asVar()->name = "a";
-    as<term>(b).asVar()->name = "b";
+    a.asVar()->name = "a";
+    b.asVar()->name = "b";
 
-    lnum<int> i = 0;
+    lelemof<int> i = 0;
 
     for(auto x: A) 
       If (x == a || x == b)
         i++;
 
     cout << i << endl;
-    } */
+    }
 
 SECTION("quantifiers")
 
