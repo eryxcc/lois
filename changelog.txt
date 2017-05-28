@@ -7,4 +7,18 @@
   leads to much less elegant code in general.
 
   Added the test program 'learning nominal automata' (tests/learning.cpp).
+
+2017/28/05:
+  Made "lsetof<T>" the basic type. Using static type fixes some issues and
+  is more in line with the philosophy of the C++ language. Include "lois-weak.h"
+  for something similar to the old "elem/lset" types, except that elems now have
+  to be explicitly constructed using the function "elof". Manual not yet updated.
   
+  Renamed "alph" and "alpha" to "subst" and "substitute". Can substitute a variable
+  with a term now, and substitute multiple variables at once.
+  
+  Improved the performance of LOIS in the following way: when substituting a variable
+  v in a AND/OR formula, when v was the last variable we checked for isUsed, 
+  parts where v was not used are not changed. This significantly improves the
+  performance of FormulaQ::simplify.
+
