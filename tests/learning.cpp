@@ -86,49 +86,6 @@ void testSat(int mode, rbool phi) {
 
 typedef vector<elem> word;
 
-struct transition {
-  elem src;
-  elem symbol;
-  elem tgt;
-  transition(elem _src, elem _symbol, elem _tgt) { src=_src; symbol=_symbol; tgt=_tgt; }
-  };
-
-inline std::ostream& operator << (std::ostream& os, transition t) { 
-  return os << "(" << t.src << "," << t.symbol << "," << t.tgt << ")"; }
-
-inline bool isused(vptr v, transition p) { return isused(v, p.src) || isused(v, p.symbol) || isused(v, p.tgt); }
-inline transition alpha(transition p, vptr v1, vptr v2) { 
-  return transition(alpha(p.src, v1, v2), alpha(p.symbol, v1, v2), alpha(p.tgt, v1, v2));
-  }
-
-inline rbool operator == (transition a, transition b) { 
-  return a.src == b.src && a.symbol == b.symbol && a.tgt == b.tgt; }
-inline rbool operator != (transition a, transition b) { 
-  return a.src != b.src || a.symbol != b.symbol && a.tgt == b.tgt; }
-inline rbool operator <  (transition a, transition b) { 
-  lbool ret;
-  Ife(a.src != b.src)
-    ret = a.src < b.src;
-  else Ife(a.symbol != b.symbol)
-    ret = a.symbol < b.symbol;
-  else ret = a.tgt < b.tgt;
-  }
-inline rbool operator <= (transition a, transition b) { 
-  lbool ret;
-  Ife(a.src != b.src)
-    ret = a.src < b.src;
-  else Ife(a.symbol != b.symbol)
-    ret = a.symbol < b.symbol;
-  else ret = a.tgt <= b.tgt;
-  }
-
-struct automaton {
-  lset Q;
-  lsetof<transition> delta;
-  lset F;
-  lset I;
-  };
-
 lset sigma;
 
 lbool wordinlanguage_aux(const word& w, const automaton& a, int pos, const lelem& state) {

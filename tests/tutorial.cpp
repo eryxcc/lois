@@ -20,53 +20,53 @@ using namespace lois;
 
 
 FUNCTION("min")
-lset min(lset X) { 
-  lset answer;
-  for(elem x: X) If (FORALL(y, X, x <= y)) answer += x;
+lsetof<term> min(lsetof<term> X) { 
+  lsetof<term> answer;
+  for(term& x: X) If (FORALL(y, X, x <= y)) answer += x;
   return answer;
 }
 
 FUNCTION("interval")
-lset interval(term a, 
-  term b, lset A) {  
+lsetof<term> interval(term a, 
+  term b, lsetof<term> A) {  
   return FILTER(x, A, 
-    (a < x) && (x < b));
+    (a < x) && (x < b), term);
 }
   
 FUNCTION("sup")
-lset supremum(lset X, lset domain) { 
-  return min(FILTER(m, domain, FORALL(x, X, m >= x)));
+lsetof<term> supremum(lsetof<term> X, lsetof<term> domain) { 
+  return min(FILTER(m, domain, FORALL(x, X, m >= x), term));
 }
 
 FUNCTION("reachability")
-lset reach 
-  (lsetof<elpair> E, 
-     lset S) {
-  lset R = S;
-  lset P;
+template<class T> lsetof<T> reach 
+  (lsetof<lpair<T,T>> E, 
+     lsetof<T> S) {
+  lsetof<T> R = S;
+  lsetof<T> P;
   While (P!=R) {
     P = R;
-    for (elpair e: E) 
+    for (auto& e: E) 
       If (memberof(e.first, R))
         R += e.second;
   }
   return R;
 }
 FUNCTION("automaton")
-struct automaton {
-  lset states;
-  lsetof<eltuple> transitions;
-  lset initial;
-  lset final;
-  lset alphabet;  
+template<class T, class U> struct automaton {
+  lsetof<T> states;
+  lsetof<lpair<T, lpair<U, T>>> transitions;
+  lsetof<T> initial;
+  lsetof<T> final;
+  lsetof<U> alphabet;  
 };
 FUNCTION("emptiness")
-rbool isEmpty(automaton A) {
-  lsetof<elpair> E;
-  for (eltuple t: A.transitions)
-    E += elpair(t[0],t[2]);
+template<class T, class U> rbool isEmpty(automaton<T,U> A) {
+  lsetof<lpair<T,T>> E;
+  for (auto& t: A.transitions)
+    E += make_lpair(t.first,t.second.second);
 
-  return (A.final&reach(E, A.initial))!=newSet();
+  return (A.final&reach(E, A.initial))!=lsetof<T>();
 }
 
 
@@ -74,28 +74,30 @@ FUNCTION("main_old")
 int main() {
 SECTION("main")
 initLois();
-sym.useLaTeX();
+//sym.useLaTeX();
+sym.useUnicode();
 SECTION("domain")
 Domain dA("\\mathbb{A}");  
-lset A = dA.getSet();
-cout << "A = " << A << endl;
+lsetof<term> A = dA.getSet();
+cout << "A = ";
+cout << A;
+cout << endl;
 SECTION("resetX")
-lset X = A;
-X += 5;
+lsetof<term> X = A;
+// X += 5;
 
 cout << "X = " << X << endl;
 SECTION("pairs")
-lsetof<elpair> Pairs;
+lsetof<lpair<term,term>> Pairs;
      
-for(elem a: A) for(elem b: A) 
-    Pairs += elpair(a,b);
+for(term a: A) for(term b: A) 
+    Pairs += make_lpair(a,b);
 
-cout << "Pairs = " 
-  << Pairs << endl;
+cout << "Pairs = " << Pairs << endl;
 SECTION("linear")  
 lbool ok = true;
 
-for (elem a:A) for (elem b:A) for (elem c:A)
+for (term a:A) for (term b:A) for (term c:A)
   If (((a<=b) && (b<=c) 
     && !(a<=c))) ok = false;
 
@@ -105,18 +107,18 @@ SECTION("more")
 // --- more snippets follow ---
   
 SECTION("newset")
-  X = newSet();
+  // X = lsetof<term>();
   cout << "X = " << X << endl;
 
 SECTION("const")
-  for(int i=1; i<=3; i++) 
-    X += i;
-  cout << "X = " << X << endl;
+  /* for(int i=1; i<=3; i++) 
+    X += i; */
+  // cout << "X = " << X << endl;
 
 SECTION("loop")
-  lset Y;
-  for(elem a: X) for(elem b: X) If (a != b)
-    Y += elpair(a, b);
+  lsetof<lpair<term,term>> Y;
+  for(term a: X) for(term b: X) If (a != b)
+    Y += make_lpair(a, b);
   cout << "Y = " << Y << endl;
 
 // SECTION("declareatom")
@@ -130,12 +132,15 @@ SECTION("loop")
 
 SECTION("control")
 
-  lset C; 
-  for(elem a: A) {
-    lset D;
-    for(elem b: A) 
-      If (a != b) 
+  lsetof<lsetof<lsetof<term>>> C; 
+  for(term a: A) {
+    lsetof<lsetof<term>> D;
+    for(term b: A) {
+      If (a != b) {
         D += newSet(b);
+        }
+      }
+    cout << "D= " << D << emptycontext << endl;
     C += D;
     }
   cout << "C=" << C << endl;
@@ -153,31 +158,32 @@ SECTION("to_many_Zs")
   {
 SECTION("whypiecewise")
 
+/*
   lset Z;
   for (elem x:A) for (elem y:A) {
     lelem u = x;
     If (x != y)
       u = newSet(elpair(x,y));
-    Z += u;
-  }
+    Z += u; 
+  } */
 
 SECTION("to_many_Zs_end")
   }
 
 {
 SECTION("semantics1")
-lset X;
-for (elem x:A) 
+lsetof<term> X;
+for (term x:A) 
   X += x;
 
 SECTION("tech1")
 } {
 
 SECTION("semantics2")
-lset X;
-for (elem x:A) {
-  lset Y;
-  for (elem y: A) 
+lsetof<lsetof<term>> X;
+for (term x:A) {
+  lsetof<term> Y;
+  for (term y: A) 
     If(x!=y)
       Y += y;
   X += Y;
@@ -186,24 +192,27 @@ for (elem x:A) {
 SECTION("tech2")
 }
 
+/*
 SECTION("assignmentex")
-lset Z;
-for (elem x:A) for (elem y:A) 
+lsetof<term> Z;
+for (term x:A) for (term y:A) 
 {
-  lset X = newSet(x);
+  lsetof<term> X = newSet(x);
   If (x != y)
-    X = newSet(elpair(x,y));
+    X = newSet(make_lpair(x,y));
   Z += X;
 }
+*/
 SECTION("simpleloop")
-  for (elem a:A) 
-    lset X = newSet(a);
+  for (auto a:A) 
+    auto X = newSet(a);
 
 SECTION("j1")
   { // too many Y's
 
 SECTION("setup")
-X = newSet();
+/*
+X = newSet<term>();
 contextptr C = currentcontext;
 for (elem a:A) for (elem b:A) {
   for (elem c:A) 
@@ -211,18 +220,21 @@ for (elem a:A) for (elem b:A) {
   If (a!=b) {
     cout << "X=" << X << endl;
     cout << "C=" << C << endl;
-SECTION("simpleloop2")
-lset Y;
+    }
+  }
+    */
 
-for (elem x:X) Y += x;
+SECTION("simpleloop2")
+lsetof<term> Y;
+
+for (term x:X) Y += x;
 
 If (X == Y) cout << "equal" << endl;
 If (X != Y) cout << "not equal" << endl;
 SECTION("test_equal")  
   If (X == Y) cout << "equal" << endl;
   If (X != Y) cout << "not equal" << endl;
-}
-}
+
 
 SECTION("j2")
   }
@@ -258,14 +270,14 @@ SECTION("j2")
 SECTION("treetest")
   RelTree tree(sym.arrow, sym.notarrow, sym.min);
 
-  for(elem a: A) for(elem b : A) If (tree.anceq(a, b)) {
-    lset I;
-    for(elem c: A) If (tree.anceq(a,c) && tree.anceq(c,b)) 
+  for(term a: A) for(term b : A) If (tree.anceq(a, b)) {
+    lsetof<term> I;
+    for(term c: A) If (tree.anceq(a,c) && tree.anceq(c,b)) 
       I += c;
     
     lbool ok = true;
-
-    for(elem x: I) for(elem y: I) for(elem z: I) {
+   
+    for(term x: I) for(term y: I) for(term z: I) {
       If (!(tree.anceq(x,y) || tree.anceq(y,x))) 
         ok = false;
       If (tree.anceq(x,y) && tree.anceq(y,z) && !tree.anceq(x,z)) 
@@ -275,57 +287,56 @@ SECTION("treetest")
     Ife(ok) cout << "total order" << endl;
     else cout << "not a total order" << endl;
     }
-
+             
 
   
 
 SECTION("count")
   int i=0;
-  for (elem a:Pairs) i++;
+  for (auto a:Pairs) i++;
   cout << i << endl;
 
-         
+             
 SECTION("set2")
-  lset UnorderedPairs;
+  lsetof<lsetof<term>> UnorderedPairs;
        
-  for(elem a: A) for(elem b: A) 
+  for(term a: A) for(term b: A) 
     If (a!=b)
       UnorderedPairs += newSet(a,b);
 
+  cout << UnorderedPairs << endl;
+
 SECTION("set3x")
-  lset coPairs;
+  lsetof<lsetof<term>> coPairs;
 
-  for(elem x: UnorderedPairs)
-    coPairs += A &~ asSet(x);
+  for(auto x: UnorderedPairs)
+    coPairs += A &~ x;
   cout << coPairs << endl;
-
+    
 SECTION("set3")
-lset Intvs;
+lsetof<lsetof<term>> Intvs;
    
-for(elpair p: Pairs) 
+for(auto& p: Pairs) 
   If (p.first<p.second) 
-    Intvs += interval(
-       as<term>(p.first),
-       as<term>(p.second),A);
+    Intvs += interval(p.first, p.second, A);
 
-cout << "Intvs = " 
-  << Intvs << endl;  
+  cout << "Intvs = " << Intvs << endl;
 SECTION("sup_test")
   lbool sup = true;
 
-  for(elem i: Intvs) 
-    If (supremum(asSet(i),A) == newSet()) sup = false;
+  for(auto i: Intvs) 
+    If (supremum(i,A) == lsetof<term>()) sup = false;
   
   If (sup) cout << "Yes" << endl;
 
 SECTION("graph")
-lsetof<elpair> E;
+lsetof<lpair<lpair<term,term>, lpair<term,term>>> E;
 
-for(elpair x: Pairs) 
-  for (elpair y: Pairs)
+for(auto x: Pairs) 
+  for (auto y: Pairs)
     If ((x.second == y.first)
       && ((y.second != x.first)))
-      E += elpair(x,y);
+      E += make_lpair(x,y);
 
 cout << E << endl;
 SECTION("declareatom")
@@ -336,13 +347,13 @@ axiom ax(u != v);
 SECTION("test_reach")
 lbool reached = false;
 
-for (elem a: A) 
-  for (elem b:A) {
-    elpair s = elpair(a,b);
-    elpair t = elpair(b,a);
+for (term a: A) 
+  for (term b:A) {
+    auto s = make_lpair(a,b);
+    auto t = make_lpair(b,a);
     If (memberof(t,reach(E, newSet(s))))
       reached = true;
-}
+  }
 
 If (reached) cout << "Reached" << endl;
   
@@ -352,15 +363,15 @@ SECTION("displaycontext")
 
   for(auto a: A) for(auto b: A) {
 
-    as<term>(a).asVar()->name = "a";
-    as<term>(b).asVar()->name = "b";
+    a.asVar()->name = "a";
+    b.asVar()->name = "b";
 
     If (a<b)
       cout << c << endl;
     }
 
 SECTION("lnumtest")
-
+/*
   for(auto a: A) for(auto b: A) {
 
     as<term>(a).asVar()->name = "a";
@@ -373,7 +384,7 @@ SECTION("lnumtest")
         i++;
 
     cout << i << endl;
-    }
+    } */
 
 SECTION("quantifiers")
 
@@ -381,7 +392,9 @@ SECTION("quantifiers")
 
 SECTION("mapfilter")
 
-  cout << MAP(x, A, FILTER(y, A, x>y)) << endl;
+  auto mf =MAP(x, A, FILTER(y, A, x>y, term), lsetof<term>);
+
+  cout << mf << endl;
 
 SECTION("finish")
   return 0;
@@ -392,12 +405,13 @@ SECTION("finish")
 
 FUNCTION("cardinalitybad")
 
-int cardinalityBad(elem X) {
+template<class T> int cardinalityBad(lsetof<T>& X) {
   int result = 0;
-  for(elem x: X) result++;
+  for(auto x: X) result++;
   return result;
 }
 
+/*
 FUNCTION("memberof")
 
 rbool ismemberof(elem a, lset B) {
@@ -447,3 +461,4 @@ FUNCTION("maxbad")
     return ans;
   }
 
+  */

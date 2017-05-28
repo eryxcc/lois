@@ -93,7 +93,7 @@ int numstruct = 0;
 
 // build the strindex table 
 
-void analyzeStructure(vector<term>& v, RelTree& tree, const lset& A, size_t a=0, size_t b=0) {
+void analyzeStructure(vector<term>& v, RelTree& tree, const lsetof<term>& A, size_t a=0, size_t b=0) {
 
   if(b>a) a=a+1, b=0;
   
@@ -128,7 +128,7 @@ void analyzeStructure(vector<term>& v, RelTree& tree, const lset& A, size_t a=0,
 
   }
 
-int countStructures(vector<term>& v, RelTree& tree, const lset& A, rbool phi, int expected) {
+int countStructures(vector<term>& v, RelTree& tree, const lsetof<term>& A, rbool phi, int expected) {
   numstruct = 0;
   If(phi) analyzeStructure(v, tree, A);
   if(numstruct == expected)
@@ -141,7 +141,7 @@ int countStructures(vector<term>& v, RelTree& tree, const lset& A, rbool phi, in
   return numstruct;
   }
 
-void testTree(const lset& A) {
+void testTree(const lsetof<term>& A) {
   
   RelTree tree(sym.arrow, sym.notarrow, sym.min);
   
@@ -170,25 +170,25 @@ void testTree(const lset& A) {
 // whether a subset of A has exactly one supremum, unless empty or
 // unbounded.
 
-lelem max(lset X) { 
-  lset answer = newSet();
-  for(elem x: X) If(FORALL(y, X, x >= y)) answer += x;
+lelemof<term> max(lsetof<term> X) { 
+  lsetof<term> answer;
+  for(term& x: X) If(FORALL(y, X, x >= y)) answer += x;
   return extract(answer);
   }
 
-lelem min(lset X) { 
-  lset answer = newSet();
-  for(elem x: X) If(FORALL(y, X, x <= y)) answer += x;
+lelemof<term> min(lsetof<term> X) { 
+  lsetof<term> answer;
+  for(term& x: X) If(FORALL(y, X, x <= y)) answer += x;
   return extract(answer);
   }
 
-lelem supremum(lset X, lset domain) { 
-  return min(FILTER(m, domain, FORALL(x, X, m >= x)));
+lelemof<term> supremum(lsetof<term> X, lsetof<term> domain) { 
+  return min(FILTER(m, domain, FORALL(x, X, m >= x), term));
   }
 
-void testOrder(lset A) {
+void testOrder(const lsetof<term>& A) {
 
-  for(elem a: A) for(elem b: A) for(elem c: A) {
+  for(const term& a: A) for(const term& b: A) for(const term& c: A) {
     rbool phi = (a<b);
     cout << phi << endl;
 
@@ -200,31 +200,31 @@ void testOrder(lset A) {
     testSat(MAYBE, a<c && c<b);
     testSat(MAYBE, b<c && c<a);
 
-    lset three = newSet({a,b,c});
-    lelem mx = max(three);
+    lsetof<term> three = newSet({a,b,c});
+    lelemof<term> mx = max(three);
     cout << "max(" << three << ") = " << mx << endl;
 
-    lelem sup = supremum(three, A);
+    lelemof<term> sup = supremum(three, A);
     cout << "supremum = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
     testSat(ALWAYS, sup == mx);
     }
 
-  for(elem a: A) for(elem b: A) If(a<b) {
-    lelem sup = supremum(newSet(a,b), A);
+  for(term a: A) for(term b: A) If(a<b) {
+    lelemof<term> sup = supremum(newSet(a,b), A);
     cout << "sup(a,b) = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
     }
   
-  for(elem a: A) for(elem b: A) If(a<b) {
-    lset interval = FILTER(z, A, a<z && z<b);
-    lelem sup = supremum(interval, A);
+  for(term a: A) for(term b: A) If(a<b) {
+    lsetof<term> interval = FILTER(z, A, a<z && z<b, term);
+    lelemof<term> sup = supremum(interval, A);
     cout << "sup(interval) = " << sup << endl;
     testSat(ALWAYS, cardinality(newSet(sup)) == 1);
 //  testSat(ALWAYS, card(sup) == 1);
     }
 
-  lelem sup = supremum(A, A);
+  lelemof<term> sup = supremum(A, A);
 
   cout << "sup(A) = " << sup << endl;
   testSat(ALWAYS, cardinality(newSet(sup)) == 0);
@@ -232,7 +232,7 @@ void testOrder(lset A) {
 
 // BFS on the random bipartite graph, as advertised in the paper.
 
-void testRandomBipartite(lset A) {
+void testRandomBipartite(lsetof<term> A) {
   string R = "R";
 
   RelBinary edge(sym.edge, sym.noedge, lmNoLoops, smSymmetric);
@@ -242,37 +242,46 @@ void testRandomBipartite(lset A) {
   // for some reason 'edge' is passed as const to lambda
   RelBinary *ebi = &edge; 
 
-  for(elem x: A) for(elem y: A) {
+  for(term x: A) for(term y: A) {
     testSat(NEVER, !EXISTS(z, A, (*ebi)(x,z) && (*ebi)(y,z)));
     }
 
   testSat(ALWAYS, FORALL(x, A, !(*ebi)(x,x)) );
 
-  lsetof<elpair> E;
+  lsetof<lpair<term, term> > E;
 
-  for(elem x: A) for(elem y: A) 
+  for(term x: A) for(term y: A) 
     If(edge(x,y) && !partition.together(x,y))
-      E += elpair(x,y);
+      E += make_lpair(x,y);
 
   cout << "E = " << E << endl;
+  
+  // debuglois = true;
 
-  for(elem a: A) {
+  // solver = solverVerbose("formula checked", solver);
+  // solver = solverNamed("diagnostic", solver);
+
+  for(term a: A) {
    
-    lnum<int> iterations = 0;
+    lelemof<int> iterations = 0;
     
-    lset R = newSet(a);
-    lset P = R;
+    lsetof<term> R = newSet(a);
+    lsetof<term> P = R;
     
     While(R != A) {
       iterations++;
-      lset NP;
+      lsetof<term> NP;
       cout << "R= " << R << endl;
-      for(elem x: P) 
-        for(elpair ed: E) 
-          If(ed.first == x && !memberof(ed.second, R))
-            R += ed.second, NP += ed.second;
-      cout << "R= " << R << endl;
+      for(term x: P) 
+        for(auto& ed: E) 
+          If(ed.first == x && !memberof(ed.second, R)) {
+            R += ed.second;
+            NP += ed.second;
+            }
+      cout << "NP= " << NP << endl;
       P = NP;
+      
+      for(int it: iterations) if(it > 10) exit(1);
       }
   
     cout << "iterations = " << iterations << endl;
@@ -295,15 +304,15 @@ void testQueue() {
 // test whether the "-=" operator works in the natural way, as
 // advertised in the paper.
 
-void testRemoval(lset A) {
-  lset X, Y;
+void testRemoval(lsetof<term> A) {
+  lsetof<lpair<term,term>> X, Y;
   
-  for(elem a: A) for(elem b: A) {
-    X += elpair(a, b);
-    If(a != b) Y += elpair(a, b);
+  for(term a: A) for(term b: A) {
+    X += make_lpair(a, b);
+    If(a != b) Y += make_lpair(a, b);
     }
   
-  for(elem a: A) X -= elpair(a, a);
+  for(term a: A) X -= make_lpair(a, a);
   
   testSat(ALWAYS, X == Y);
   }
@@ -311,21 +320,22 @@ void testRemoval(lset A) {
 // test whether an improper assignment throws an exception, as
 // mentioned in the paper.
 
-void testAssignment(lset A) {
+void testAssignment(lsetof<term> A) {
   lbool phi;
   
   try {
-    for(elem a: A) for(elem b: A) phi = (a==b);
+    for(term a: A) for(term b: A) phi = (a==b);
   } catch(assignment_exception e) {
     printf("passed: assignment_exception\n");
     }
   }
 
+/*
 // calculate the powerset.
-lset orbitpowerset(lset X) {
-  lset result;
-  for(elem x: X) {
-    lset orbit = getorbit(x, {});
+lsetof<lsetof<term>> orbitpowerset(lsetof<term> X) {
+  lsetof<lsetof<term>> result;
+  for(term x: X) {
+    lsetof<term> orbit = getorbit(x, {});
     lset Y = X &~ orbit;
     lset P1 = orbitpowerset(Y);
     for(elem p: P1) {
@@ -336,23 +346,28 @@ lset orbitpowerset(lset X) {
     }
   return newSet(emptyset);
   }
+*/
 
-void testPowerset(lset A) {
-  cout << "orbit powerset of " << A << " is:" << endl << orbitpowerset(A) << endl;
+void testPowerset(lsetof<term> A) {
+  // cout << "orbit powerset of " << A << " is:" << endl << orbitpowerset(A) << endl;
   }
-  
 
-void testFullyPseudoparallel(lset A) {
-  lset X;
-  for(elem a: A) X += a;
-  for(elem a: A) for(elem b: A) If(a != b) X += elpair(a,b);
+void testFullyPseudoparallel(lsetof<term> A) {
+/*  lsetof<term> X;
+  for(term a: A) X += a;
+  for(term a: A) for(term b: A) If(a != b) X += make_lpair(a,b);
   X += 42;
   cout << "X is: " << X << endl;
   cout << "singleton set is: " << getsingletonset(X) << endl;
   
-  for(lelem e: fullypseudoparallel(X)) {
+  for(lelemof<term> e: fullypseudoparallel(X)) {
     cout << "e = " << e << endl;
-    }
+    } */
+  }
+
+void testCartesian(lsetof<term>& A) {
+//  lsetof<lvector<term>> X = cartesianPower(A, 3);
+//  cout << "cartesian power is: " << X << std::endl;
   }
 
 int main() {
@@ -371,7 +386,7 @@ int main() {
 #endif
 
   Domain dA("A");
-  lset A = dA.getSet(); 
+  lsetof<term> A = dA.getSet(); 
 
   testFullyPseudoparallel(A);
   showTimeElapsed(); cout<<endl;
@@ -391,7 +406,10 @@ int main() {
   testRemoval(A);
   showTimeElapsed(); cout<<endl;
   
-  testPowerset(A * A);
+  // testPowerset(A * A);
+  // showTimeElapsed(); cout<<endl;
+
+  testCartesian(A);
   showTimeElapsed(); cout<<endl;
 
   testTree(A);
