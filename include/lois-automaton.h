@@ -1,3 +1,8 @@
+#ifndef _lois_automaton_h_
+#define _lois_automaton_h_
+
+#include "lois.h"
+
 namespace lois {
 
   template<class State, class Symbol> struct transition {
@@ -55,3 +60,5 @@ namespace lois {
 
   
   };
+
+#endif
