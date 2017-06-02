@@ -1,5 +1,11 @@
 // this file defines the struct 'elem' for weakly typed sets
 
+#ifndef _lois_weak_h_
+#define _lois_weak_h_
+
+#include <memory>
+#include "loisextra.h"
+
 namespace lois {
 
 struct elem {
@@ -100,3 +106,5 @@ typedef lsetof<elem> lset;
 typedef lelemof<elem> lelem;
 
 }
+
+#endif
