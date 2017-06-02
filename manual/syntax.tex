@@ -217,12 +217,12 @@ the number of tries for the simplification algorithm).
 \subsection{Other functions}
 Some other functions include:
 \begin{itemize}
-\item {\tt lset optimize(const lset& x)}, which optimizes the set by removing repetitions
+\item {\tt lset optimize(const lset\& x)}, which optimizes the set by removing repetitions
 (each element in the returned set will be in exactly one set-builder expression).
-\item {\tt lset optimizeType(const lset& x, const lset& type)}, which is a more efficient version of
+\item {\tt lset optimizeType(const lset\& x, const lset\& type)}, which is a more efficient version of
 {\tt optimize} for the case when we know that {\tt x} is a subset of a (simple) set
 {\tt type}.
-\item {\tt getsingletonset(const lset& X)}, which returns the set of singletons of elements of X,
+\item {\tt getsingletonset(const lset\& X)}, which returns the set of singletons of elements of X,
 represented as a single set-builder expression.
 
 \end{itemize}

@@ -4,13 +4,12 @@ namespace lois {
 
 int indent = 0;
 
-indenter iindent {2, false}, ieol {0, true}, iunindent {-2, false};
+indenter iindent {2, 0}, ido {0, 1}, ieol {0, 2}, iunindent {-2, 0};
 
 std::ostream& operator << (std::ostream& os, indenter a) { 
   indent += a.i;
-  if(indent >= 0 && a.doit) {
-    os << std::endl; for(int i=0; i<indent; i++) os << " ";
-    }
+  if(indent >= 0 && a.doit >= 2) os << std::endl; 
+  if(indent >= 0 && a.doit >= 1) for(int i=0; i<indent; i++) os << " ";
   return os;
   }
 
@@ -121,8 +120,8 @@ void initLois() {
   sym.useUnicode();
   mainOrder = new RelOrder(sym.greater, sym.leq, sym.max, sym.min);
   useDefaultSolver(50000);
-  emptyset = newSet();
   smtLogic = "LRA";
   }
 
+bool debuglois = false;
 }

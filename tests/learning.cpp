@@ -7,7 +7,7 @@
 // use a tailored algorithm for membership checking, instead of using the automaton
 // (works for the queue)
 #define MEMBEROPT
-
+               
 // iterate membership instead of recursing
 // #define MEMBER_ITERATIVE
 
@@ -84,75 +84,44 @@ void testSat(int mode, rbool phi) {
   if(cnt != mode) exit(1);
   }
 
-typedef vector<elem> word;
+#include "../include/lois-weak.h"
 
-struct transition {
-  elem src;
-  elem symbol;
-  elem tgt;
-  transition(elem _src, elem _symbol, elem _tgt) { src=_src; symbol=_symbol; tgt=_tgt; }
-  };
+typedef elem Symbol;
+typedef elem State;
 
-inline std::ostream& operator << (std::ostream& os, transition t) { 
-  return os << "(" << t.src << "," << t.symbol << "," << t.tgt << ")"; }
+typedef lvector<Symbol> word;
 
-inline bool isused(vptr v, transition p) { return isused(v, p.src) || isused(v, p.symbol) || isused(v, p.tgt); }
-inline transition alpha(transition p, vptr v1, vptr v2) { 
-  return transition(alpha(p.src, v1, v2), alpha(p.symbol, v1, v2), alpha(p.tgt, v1, v2));
+ostream& operator << (ostream& os, const word& w) {
+  for(auto s: w) os << s;
+  return os;
   }
 
-inline rbool operator == (transition a, transition b) { 
-  return a.src == b.src && a.symbol == b.symbol && a.tgt == b.tgt; }
-inline rbool operator != (transition a, transition b) { 
-  return a.src != b.src || a.symbol != b.symbol && a.tgt == b.tgt; }
-inline rbool operator <  (transition a, transition b) { 
-  lbool ret;
-  Ife(a.src != b.src)
-    ret = a.src < b.src;
-  else Ife(a.symbol != b.symbol)
-    ret = a.symbol < b.symbol;
-  else ret = a.tgt < b.tgt;
-  }
-inline rbool operator <= (transition a, transition b) { 
-  lbool ret;
-  Ife(a.src != b.src)
-    ret = a.src < b.src;
-  else Ife(a.symbol != b.symbol)
-    ret = a.symbol < b.symbol;
-  else ret = a.tgt <= b.tgt;
-  }
+#include "../include/lois-automaton.h"
+typedef automaton<State, Symbol> myautomaton;
+typedef transition<State, Symbol> mytransition;
 
-struct automaton {
-  lset Q;
-  lsetof<transition> delta;
-  lset F;
-  lset I;
-  };
-
-lset sigma;
-
-lbool wordinlanguage_aux(const word& w, const automaton& a, int pos, const lelem& state) {
+lbool wordinlanguage_aux(const word& w, const myautomaton& a, int pos, const lelemof<State>& state) {
 //  std::cout << "in state = " << state << " in " << emptycontext << std::endl;
   if(pos == w.size()) return memberof(state, a.F);
   elem c = w[pos];
   
   lbool yes = false;
 
-  for(transition& t: a.delta) 
+  for(auto& t: a.delta) 
     If(t.src == state && t.symbol == w[pos]) 
       yes |= wordinlanguage_aux(w, a, pos+1, t.tgt);
     
   return yes;
   }
 
-lbool wordinlanguage(word w, const automaton& a) {
+lbool wordinlanguage(word w, const myautomaton& a) {
 #ifdef MEMBEROPT
 #ifdef QUEUESIZE
   word queu;
   lbool res = true;
   int qid = 0;
   for(elem c: w) {
-    elpair p = as<elpair> (c);
+    auto p = as<elpair> (c);
     Ife(p.first == 1) { 
       if(queu.size() == qid + QUEUESIZE) return false;
       queu.push_back(p.second);
@@ -189,38 +158,38 @@ lbool wordinlanguage(word w, const automaton& a) {
 
 word concat(word x, word y) {
   word res;
-  for(elem a: x) res.push_back(a);
-  for(elem b: y) res.push_back(b);
+  for(Symbol a: x) res.push_back(a);
+  for(Symbol b: y) res.push_back(b);
   return res;
   }
 
-word concat(elem a, word y) {
+word concat(Symbol a, word y) {
   word res;
   res.push_back(a);
-  for(elem b: y) res.push_back(b);
+  for(Symbol b: y) res.push_back(b);
   return res;
   }
 
-word concat(word x, elem b) {
+word concat(word x, Symbol b) {
   word res;
-  for(elem a: x) res.push_back(a);
+  for(Symbol a: x) res.push_back(a);
   res.push_back(b);
   return res;
   }
 
 word concat(word x, word y, word z) {
   word res;
-  for(elem a: x) res.push_back(a);
-  for(elem b: y) res.push_back(b);
-  for(elem c: z) res.push_back(c);
+  for(Symbol a: x) res.push_back(a);
+  for(Symbol b: y) res.push_back(b);
+  for(Symbol c: z) res.push_back(c);
   return res;
   }
 
-word concat(word x, elem b, word z) {
+word concat(word x, Symbol b, word z) {
   word res;
-  for(elem a: x) res.push_back(a);
+  for(Symbol a: x) res.push_back(a);
   res.push_back(b);
-  for(elem c: z) res.push_back(c);
+  for(Symbol c: z) res.push_back(c);
   return res;
   }
 
@@ -228,7 +197,7 @@ lbool operator ^ (lbool x, lbool y) {
   return (x&&!y) || (y&&!x);
   }
 
-void printAutomaton(const automaton& L) {
+void printAutomaton(const myautomaton& L) {
   std::cout << "Q = " << L.Q << std::endl;
   std::cout << "I = " << L.I << std::endl;
   std::cout << "F = " << L.F << std::endl;
@@ -236,7 +205,7 @@ void printAutomaton(const automaton& L) {
   }
 
 #ifndef LEARN_NFA
-void learning(const automaton& L) {
+void learning(const myautomaton& L) {
 
   std::cout << "DFA to learn:" << std::endl;
   printAutomaton(L);
@@ -261,7 +230,7 @@ void learning(const automaton& L) {
     
     std::cout << "Checking closedness..." << std::endl;    
 
-    for(auto s: S) for(auto a: sigma) {
+    for(auto s: S) for(auto a: L.alph) {
       lbool ok2 = false;
       for(auto t: S) {
         lbool ok = true;
@@ -286,7 +255,7 @@ void learning(const automaton& L) {
       lbool ok = true;
       for(auto e: E) If(wordinlanguage(concat((s),e), L) ^ wordinlanguage(concat((t),e), L))
         ok = false;
-      If(ok) for(auto a: sigma) for(auto e: E)
+      If(ok) for(auto a: L.alph) for(auto e: E)
         If(wordinlanguage(concat((s),a,(e)), L) ^ wordinlanguage(concat((t),a,(e)), L))
           /*If(!memberof(concat(a,e), E))*/ {
             std::cout << 
@@ -299,25 +268,27 @@ void learning(const automaton& L) {
     
     }
   
-  automaton Learned;
+  myautomaton Learned;
 
   for(auto s: S) {
-    lset state;
+    lsetof<word> state;
     for(auto e: E) 
       If(wordinlanguage(concat(s,e), L))
         state += e;
       
-    If(!memberof(state, Learned.Q)) {
-      Learned.Q += state;
-      If(s == word()) Learned.I = newSet(state);
+    elem estate = elof(state);
+      
+    If(!memberof(estate, Learned.Q)) {
+      Learned.Q += estate;
+      If(s == word()) Learned.I = newSet<State> (estate);
       If(wordinlanguage(s, L))
-        Learned.F += state;
+        Learned.F += estate;
 
-      for(auto a: sigma) {
-        lset q2;
+      for(auto a: L.alph) {
+        lsetof<word> q2;
         for(auto e: E) If(wordinlanguage(concat(s,a,e), L))
           q2 += e;
-        Learned.delta += transition(state, a, q2);
+        Learned.delta += mytransition(estate, a, elof(q2));
         }
       }
     }
@@ -329,14 +300,14 @@ void learning(const automaton& L) {
   // (q1,q2) \in compare iff, after reading some word, the
   // DFA L is in state q1 and the DFA Learned
   // is in state q2
-  lsetof<elpair> compare;
+  lsetof<lpair<State, State>> compare;
   
   // for each (q1,q2) in compare, witnesses contains ((q1,q2), w),
   // where w is the witness word
-  lsetof<lpair<elpair, word> > witnesses;
+  lsetof<lpair<lpair<State,State>, word> > witnesses;
 
   for(elem e: L.I) for(elem e2: Learned.I) {
-    auto initpair = elpair(e, e2);
+    auto initpair = make_lpair(e, e2);
     compare += initpair;
     witnesses += make_lpair(initpair, word());
     }
@@ -365,16 +336,16 @@ void learning(const automaton& L) {
 #ifdef ADD_COLUMNS
         for(int i=0; i<int(w.size()-1); i++) w[i] = w[i+1];
 #endif
-        w.resize(w.size() - 1);
+        w.inner.resize(w.size() - 1);
         }
       }
     
-    for(auto a: sigma)
-      for(transition& t1: L.delta) 
+    for(auto a: L.alph)
+      for(mytransition& t1: L.delta) 
         If(t1.src == q1 && t1.symbol == a) 
-      for(transition& t2: Learned.delta) 
+      for(mytransition& t2: Learned.delta) 
         If(t2.src == q2 && t2.symbol == a) {
-          elpair p2 = elpair(t1.tgt, t2.tgt);
+          auto p2 = make_lpair(t1.tgt, t2.tgt);
           If(!memberof(p2, compare)) {
             compare += p2;
             witnesses += make_lpair(p2, concat(w, a));
@@ -386,7 +357,7 @@ void learning(const automaton& L) {
   }
 
 #else
-void learning(const automaton& L) {
+void learning(const myautomaton& L) {
   std::cout << "NFA to learn:" << std::endl;
   printAutomaton(L);
   std::cout << std::endl;
@@ -467,7 +438,7 @@ void learning(const automaton& L) {
         }
       }
         
-    automaton learned;
+    myautomaton learned;
     learned.Q = primerows & uprows;
 
     lset initrow;
@@ -562,61 +533,68 @@ void learning(const automaton& L) {
   }
 #endif
 
-void buildStackAutomaton(automaton& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
+template<class T, class U> elem elpair(T x, U y) { return elof(make_lpair(x,y)); }
+
+void buildStackAutomaton(myautomaton& target, lsetof<term>& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
  
-  target.Q += w;
-  target.F += w;
+  auto ew = elof(w);
+  target.Q += elof(w);
+  target.F += elof(w);
   
-  if(more) for(elem a: A) {
-    word w2 = concat(w, a);
+  if(more) for(term a: A) {
+    word w2 = concat(w, elof(a));
+    auto ew2 = elof(w2);
     buildStackAutomaton(target, A, etrash, epush, epop, w2, more-1);
-    target.delta += transition(w, elpair(epush, a), w2);
-    target.delta += transition(w2, elpair(epop, a), w);
-    for(elem b: A) If(a != b)
-      target.delta += transition(w2, elpair(epop, b), etrash);
+    target.delta += mytransition(ew, elof(make_lpair(epush, a)), ew2);
+    target.delta += mytransition(ew2, elof(make_lpair(epop, a)), ew);
+    for(term b: A) If(a != b)
+      target.delta += mytransition(elof(w2), (elpair(epop, b)), etrash);
     }
-  else for(elem a: A) target.delta += transition(w, elpair(epush, a), etrash);
+  else for(term a: A) target.delta += mytransition(elof(w), (elpair(epush, a)), etrash);
   }
-  
-void buildQueueAutomaton(automaton& target, lset& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
+
+void buildQueueAutomaton(myautomaton& target, lsetof<term>& A, elem& etrash, elem& epush, elem& epop, word w, int more) {
  
-  target.Q += w;
-  target.F += w;
+  auto ew = elof(w);
+  target.Q += ew;
+  target.F += ew;
   
   if(w.size() == 0) {
-    for(elem a: A) target.delta += transition(w, elpair(epop, a), etrash);
+    for(term a: A) target.delta += mytransition(ew, (elpair(epop, a)), etrash);
     }
   else {
     word w2;
     for(int i=1; i<(int) w.size(); i++) w2.push_back(w[i]);
-    target.delta += transition(w, elpair(epop, w[0]), w2);
-    for(elem a: A) If(a != w[0]) target.delta += transition(w, elpair(epop, a), etrash);
+    auto ew2 = elof(w2);
+    target.delta += mytransition(ew, (elpair(epop, w[0])), ew2);
+    for(term a: A) If(elof(a) != w[0]) target.delta += mytransition(ew, elof(elpair(epop, a)), etrash);
     }
   
-  if(more) for(elem a: A) {
-    word w2 = concat(w, a);
-    target.delta += transition(w, elpair(epush, a), w2);
+  if(more) for(term a: A) {
+    word w2 = concat(w, elof(a));
+    auto ew2 = elof(w2);
+    target.delta += mytransition(ew, elpair(epush, a), ew2);
     buildQueueAutomaton(target, A, etrash, epush, epop, w2, more-1);
     }
-  else for(elem a: A) target.delta += transition(w, elpair(epush, a), etrash);
+  else for(term a: A) target.delta += mytransition(ew, elpair(epush, a), etrash);
   }
 
-void buildNthLast(automaton& target, lset& A, word w, int nth) {
+void buildNthLast(myautomaton& target, lset& A, word w, int nth) {
   
   if(w.size() == nth) {    
     If(w[0] == w[1]) 
-      target.F += w;
+      target.F += elof(w);
     for(auto a: A) {
       word w2 = w;
       for(int i=1; i<nth-1; i++) w2[i] = w2[i+1];
       w2[nth-1] = a;
-      target.delta += transition(w, a, w2);
+      target.delta += mytransition(elof(w), elof(a), elof(w2));
       }
     }
   else {
-    for(auto a: sigma) {
+    for(auto a: A) {
       word w2 = concat(w, a);
-      target.delta += transition(w, a, w2);
+      target.delta += mytransition(elof(w), elof(a), elof(w2));
       buildNthLast(target, A, w2, nth);
       }
     }    
@@ -632,33 +610,35 @@ int main() {
 //  solver = solverBasic() || solverIncremental("./cvc4-new --lang smt --incremental");
 
   Domain dA("Atoms");
-  lset A = dA.getSet();
+  auto A = dA.getSet();
 
-  sigma = A;
+  lset sigma;
+  for(auto a: A) sigma += elof(a);
 
   sym.neq = "≠";
   
-  automaton target;
+  myautomaton target;
+  target.alph = sigma;
   
   // language L1 from the paper (repeated letter)
 
 #if DOUBLEWORD == 1
 #define WHICH doubleword
   if(true) {
-    elem e0 = 0;
-    elem e1 = 1;
-    elem e2 = 2;
+    elem e0 = elof(0);
+    elem e1 = elof(1);
+    elem e2 = elof(2);
     target.Q += e0;
     target.Q += e1;
     target.Q += e2;
     for(auto a:A) target.Q += a;
     target.F += e1;
     target.I += e0;
-    for(auto a:A) target.delta += transition(e0, a, a);
-    for(auto a:A) target.delta += transition(a, a, e1);
+    for(auto a:A) target.delta += mytransition(e0, a, a);
+    for(auto a:A) target.delta += mytransition(a, a, e1);
     for(auto a:A) for(auto b: A) If(a != b) target.delta += transition(a, b, e2);
-    for(auto a:A) target.delta += transition(e2, a, e2);
-    }
+    for(auto a:A) target.delta += mytransition(e2, a, e2);
+    }                             
 #endif
 
   // language L2 from the paper (repeated two letters: 'baba')
@@ -666,31 +646,31 @@ int main() {
 #if DOUBLEWORD == 2
 #define WHICH doubleword
   if(true) {
-    elem eini = 0;   // initial
-    elem etrash = 1; // trash
-    elem eaccept = 2; // accept
+    elem eini = elof(0);   // initial
+    elem etrash = elof(1); // trash
+    elem eaccept = elof(2); // accept
     target.Q += eini;
     target.Q += etrash;
     target.Q += eaccept;
-    for(auto a: A) target.Q += a; // read one letter
+    for(auto a: A) target.Q += elof(a); // read one letter
     for(auto a: A) for(auto b: A) target.Q += elpair(a,b); // read two letters
     for(auto a: A) target.Q += elpair(a,eini); // read three letters, wait for 'a'
     target.F += eaccept;
     target.I += eini;
     
-    for(auto a: A) target.delta += transition(eini, a, a);
+    for(auto a: A) target.delta += mytransition(eini, elof(a), elof(a));
     for(auto a: A) for(auto b: A)
-      target.delta += transition(a, b, elpair(a,b));
+      target.delta += mytransition(elof(a), elof(b), elpair(a,b));
     for(auto a: A) for(auto b: A)
-      target.delta += transition(elpair(a,b), a, elpair(b,eini));
+      target.delta += mytransition(elpair(a,b), elof(a), elpair(b,eini));
     for(auto a: A) for(auto b: A) for(auto c: A) If(a != c)
-      target.delta += transition(elpair(a,b), c, etrash);
+      target.delta += mytransition(elpair(a,b), elof(c), etrash);
     for(auto a: A) 
-      target.delta += transition(elpair(a,eini), a, eaccept);
+      target.delta += mytransition(elpair(a,eini), elof(a), eaccept);
     for(auto a: A) for(auto b: A) If(a != b)
-      target.delta += transition(elpair(a,eini), b, etrash);
-    for(auto a: A) target.delta += transition(etrash, a, etrash);
-    for(auto a: A) target.delta += transition(eaccept, a, etrash);
+      target.delta += mytransition(elpair(a,eini), elof(b), etrash);
+    for(auto a: A) target.delta += mytransition(etrash, elof(a), etrash);
+    for(auto a: A) target.delta += mytransition(eaccept, elof(a), etrash);
     }
 #endif
   
@@ -701,10 +681,10 @@ int main() {
     elem etrash = 0;
     elem epush = 1;
     elem epop = 2;
-    sigma = newSet(epush, epop) * A;
+    target.alph = newSet(epush, epop) * A;
     target.Q += etrash;
     target.I += word();
-    for(elem a: A) target.delta += transition(word(), elpair(epop, a), etrash);
+    for(elem a: A) target.delta += mytransition(word(), elpair(epop, a), etrash);
     
     buildStackAutomaton(target, A, etrash, epush, epop, word(), STACKSIZE);
     }
@@ -717,7 +697,7 @@ int main() {
     elem etrash = 0;
     elem epush = 1;
     elem epop = 2;
-    sigma = newSet(epush, epop) * A;
+    target.alph = newSet(epush, epop) * A;
     target.Q += etrash;
     target.I += word();
     
@@ -761,7 +741,7 @@ int main() {
     }
 #endif
 
-  lset allwords;
+  lsetof<word> allwords;
   
   for(auto a: sigma) for(auto b: sigma) {
     word w;
@@ -772,7 +752,7 @@ int main() {
 
   std::cout << "All words of length 2: " << allwords << std::endl << std::endl;
   
-  allwords = newSet();
+  allwords = newSet<word>({});
   
   for(auto a: sigma) for(auto b: sigma) for(auto c: sigma) for(auto d: sigma) {
     word w;

@@ -41,8 +41,8 @@ struct Formula {
   // display the rbool
   virtual std::ostream& display (std::ostream &os) const = 0;
   virtual std::ostream& display (std::ostream &os, int prio) { return display(os); }
-  // alpha-convert the rbool from 'v1' to 'v2'
-  virtual rbool alph(vptr v1, vptr v2) const = 0;
+  // substitute 'v' for 't' in this formula
+  virtual rbool subst(const varsubstlist& l) const = 0;
   // negate the rbool
   virtual rbool negate() = 0;
   // verify whether the rbool is true.
@@ -50,7 +50,7 @@ struct Formula {
   virtual bool verify() = 0;
   // if the variable 'v' used in this rbool?
   virtual bool uses(vptr v) = 0;
-  virtual vptr valueKnown(vptr v, bool negated) { return nullvptr; }
+  virtual term valueKnown(vptr v, bool negated) { return nullterm; }
   virtual void initDomains() = 0;
   virtual void listFeatures(featurelist&) = 0;
 #ifdef AGGSYM
@@ -70,7 +70,7 @@ struct FormulaQ : Formula {
   bool type;
   rbool right;
   varlist var;
-  void setfv() { } // vl_split(fv, right->fv, var); }
+  void setfv() { } // vl_split(fv, right->fv, var);
   FormulaQ(bool t, rbool r) : type(t), right(r) { setfv(); }
   FormulaQ(bool t, rbool r, const varlist& va) : type(t), right(r), var(va) { setfv(); }
   FormulaQ(bool t, rbool r, std::initializer_list<vptr> va) : type(t), right(r) {
@@ -81,8 +81,8 @@ struct FormulaQ : Formula {
     if(prio) { os << "("; display(os); return os << ")"; }
     return display(os);
     }
-  rbool alph(vptr v1, vptr v2) const { 
-    auto q = std::make_shared<FormulaQ> (type, right->alph(v1,v2), var);
+  rbool subst(const varsubstlist& l) const { 
+    auto q = std::make_shared<FormulaQ> (type, right->subst(l), var);
     return q->simplify(q);
     }
   rbool negate() { 
@@ -95,7 +95,7 @@ struct FormulaQ : Formula {
     bool b = verifyAt(var.size()-1); qty[b]++; return b; 
     }
   bool uses(vptr v) { return right->uses(v); }
-  vptr valueKnown(vptr v, bool negated);
+  term valueKnown(vptr v, bool negated);
   rbool qsimplify2() {
     auto q = std::make_shared<FormulaQ> (type, right->qsimplify(), var);
     return q -> simplify(q);

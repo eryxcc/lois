@@ -4,6 +4,8 @@
 #include <sys/time.h>
 
 #include "../include/loisextra.h"
+#include "../include/lois-weak.h"
+#include "../include/lois-automaton.h"
 
 #include <iostream>
 using namespace std;
@@ -55,15 +57,15 @@ inline lset& operator += (lset& x, const rset y) {
   return x += elem(y);
   } */
 
-void minimalize1(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
+template<class State, class Symbol> void minimalize1(lsetof<State> Q, lsetof<State> F, lsetof<transition<State,Symbol>> delta, lsetof<Symbol> alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
   
-  lset NF = Q &~ F;
+  lsetof<State> NF = Q &~ F;
   cout << "NF = " << NF << endl << endl;
-  
-  lset eq = (F * F) | (NF * NF);
+
+  lsetof<lpair<State,State>> eq = (F * F) | (NF * NF);
   
   int it = 0;
   
@@ -72,15 +74,17 @@ void minimalize1(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
   While(cont) {
     cout << "eq = " << eq << endl << endl;
     
-    lset neq;
+    lsetof<lpair<State,State>> neq;
     
-    for(elem q1: Q) for(elem q2: Q) If(memberof(elpair(q1,q2), eq)) {
+    for(State q1: Q) for(State q2: Q) If(memberof(make_lpair(q1,q2), eq)) {
       lbool b = true;
-      for(elem x: alph) for(eltuple t1: delta) for(eltuple t2: delta)
-        If(t1[0] == q1 && t1[1] == x && t2[0] == q2 && t2[1] == x)
-          If(!memberof(elpair(t1[2], t2[2]), eq))
+      for(Symbol& x: alph) for(auto& t1: delta) for(auto& t2: delta)
+        If(t1.src == q1 && t1.symbol == x && t2.src == q2 && t2.symbol == x) {
+          If(!memberof(make_lpair(t1.tgt, t2.tgt), eq)) {
             b = ffalse;
-      If(b) neq += elpair(q1, q2);
+            }
+          }
+      If(b) neq += make_lpair(q1, q2);
       }
     
     If(eq == neq) cont = ffalse;
@@ -89,11 +93,11 @@ void minimalize1(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
 
   cout << "number of iterations: " << it << endl << endl;
   
-  lset classes;
+  lsetof<lsetof<State>> classes;
   
-  for(elem a: Q) {
-    lset t;    
-    for(elem b: Q) If(memberof(elpair(a,b), eq)) 
+  for(State& a: Q) {
+    lsetof<State> t;
+    for(State& b: Q) If(memberof(make_lpair(a,b), eq)) 
       t += b;
     classes += t;
     }
@@ -104,12 +108,12 @@ void minimalize1(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
   cout << "classes: " << classes << endl;  
   }
 
-void minimalize2(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
+template<class State, class Symbol> void minimalize2(lsetof<State> Q, lsetof<State> F, lsetof<transition<State,Symbol>> delta, lsetof<Symbol> alph) {
   cout << "Q = " << Q << endl;
   cout << "F = " << F << endl;
   cout << "delta = " << delta << endl;
   
-  lset classes;
+  lsetof<lsetof<State>> classes;
   classes += F;
   classes += Q &~ F;
   
@@ -118,18 +122,18 @@ void minimalize2(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
   lbool cont = true;
   
   While(cont) {
-    lset nclasses;
+    lsetof<lsetof<State>> nclasses;
     cout << "classes = " << classes << endl << endl;
     cont = ffalse;
     
-    for(elem EC: classes) {
-      for(elem q1: EC) {
+    for(auto& EC: classes) {
+      for(State& q1: EC) {
         lset EC1;
-        for(elem q2: EC) {
+        for(State& q2: EC) {
           lbool b = true;
-          for(eltuple t1: delta) for(eltuple t2: delta) 
-            If(t1[0] == q1 && t2[0] == q2 && t1[1] == t2[1])
-            If(EXISTS(c, classes, memberof(t1[2], asSet(c)) && !memberof(t2[2], asSet(c))))
+          for(auto& t1: delta) for(auto& t2: delta) 
+            If(t1.src == q1 && t2.src == q2 && t1.symbol == t2.symbol)
+            If(EXISTS(c, classes, memberof(t1.tgt, c) && !memberof(t2.tgt, c)))
               b &= ffalse;
           Ife(b) EC1 += q2;
           else cont = ftrue;
@@ -146,10 +150,17 @@ void minimalize2(lset Q, lset F, lsetof<eltuple> delta, lset alph) {
   cout << "classes: " << classes << endl;  
   }
 
+elem eltuple(std::initializer_list<term> l) {
+  return elof(lvector<term>(l));
+  }
+
+namespace lois {
+  extern int simplifyVerbosity;
+  }
+
 int main() {
   lasttime = getVa();
   initLois();
-  // pushSolverDiagnostic("checking: ");
 
   sym.neq = "≠";
 
@@ -172,18 +183,19 @@ int main() {
 //  solverCrash();
 
   Domain dA("Real");
-  lset A = dA.getSet();
+  lsetof<term> A = dA.getSet();
   
-  lset Q;
-  lset F;
-  lsetof<eltuple> delta;
+  typedef elem state;
+  typedef term symbol;
   
-  lset R;
-
+  lsetof<state> Q;
+  lsetof<state> F;
+  lsetof<transition<state,symbol>> delta;
+  
 //   for (elem x:A) for (elem y:A) {
-//     elem u=elpair(x,y);
+//     elem u=make_lpair(x,y);
 //     If (x==y)
-// 		R+= elpair(x,y);
+//              R+= make_lpair(x,y);
 // 	If (x!=y)
 //       R+=eltuple({x,x,y});
 // //    R += u;
@@ -191,30 +203,30 @@ int main() {
 //   cout << "R= " << R << endl;
     
 
-  lset alph = A;
+  lsetof<symbol> alph = A;
 
-  Q += 0;
-  for(elem a: A) Q += eltuple({a});
-  for(elem a: A) for(elem b: A) Q += eltuple({a, b});
-  for(elem a: A) for(elem b: A) for(elem c: A) Q += eltuple({a, b, c});
-  Q += 4;
+  Q += elof(0);
+  for(symbol& a: A) Q += eltuple({a});
+  for(symbol& a: A) for(symbol& b: A) Q += eltuple({a, b});
+  for(symbol& a: A) for(symbol& b: A) for(symbol& c: A) Q += eltuple({a, b, c});
+  Q += elof(4);
   
-  for(elem a: A) for(elem b: A) for(elem c: A) 
+  for(symbol& a: A) for(symbol& b: A) for(symbol& c: A) 
     If(a==b || a==c || b==c) F += eltuple({a,b,c});
     
-  for(elem x: A) {
-    delta += eltuple({elof(0),x,elof(eltuple({x}))});
+  for(symbol& x: A) {
+    delta += make_transition(elof(0),x,eltuple({x}));
 
-    for(elem a: A)
-      delta += eltuple({elof(eltuple({a})),x,elof(eltuple({a,x}))});
+    for(symbol& a: A)
+      delta += make_transition(eltuple({a}),x,eltuple({a,x}));
 
-    for(elem a: A) for(elem b: A)
-      delta += eltuple({elof(eltuple({a,b})),x,elof(eltuple({a,b,x}))});
+    for(symbol& a: A) for(symbol& b: A)
+      delta += make_transition(eltuple({a,b}),x,eltuple({a,b,x}));
 
-    for(elem a: A) for(elem b: A) for(elem c: A)
-      delta += eltuple({elof(eltuple({a,b,c})),x,elof(4)});
+    for(symbol& a: A) for(symbol& b: A) for(symbol& c: A)
+      delta += make_transition(eltuple({a,b,c}),x,elof(4));
 
-    delta += eltuple({elof(4),x,elof(4)});
+    delta += make_transition(elof(4),x,elof(4));
     }
 
   /* Q += 0; Q += 1; Q += 2; Q += 3; F += 0; F += 2; F += 1;

@@ -17,9 +17,9 @@ namespace lois {
 
 extern int indent;
 
-struct indenter { int i; bool doit; };
+struct indenter { int i; int doit; };
 
-extern indenter iindent, ieol, iunindent;
+extern indenter iindent, ido, ieol, iunindent;
 
 std::ostream& operator << (std::ostream& os, indenter a);
 
@@ -84,6 +84,8 @@ struct symbol {
   symbol(const char *s) { sym = std::make_shared<symbolvariable> (s); }
   };
 
+extern bool debuglois;
+
 inline std::ostream& operator << (std::ostream& os, symbol a) { return os << a.asString(); }
 
 struct symbols {
@@ -107,12 +109,8 @@ extern symbols sym;
 
 struct Formula;
 struct term;
-struct elem;
-struct lset;
 struct Subdomain;
 struct rbool;
-struct Element;
-struct ESet;
 
 template<class T> struct lsetof;
 
@@ -122,11 +120,8 @@ typedef std::shared_ptr<struct TermVariable> tvptr;
 typedef std::vector<vptr> varlist;
 typedef std::shared_ptr<struct Context> contextptr;
 
-// convert an elem to a term
-term& asa(const elem& x);
-
-// convert an elem to type T, throw as_exception if it does not contain type T
-template<class T> T& as(elem a);
+typedef std::pair<vptr, term> varsubst;
+typedef std::vector<varsubst> varsubstlist;
 
 // --- rbool, or the first order formulae
 
@@ -210,9 +205,20 @@ extern std::string autoprefix;
 struct term {
   tvptr p;
   term(tvptr v);
+  term() { p = NULL; }
   void display(std::ostream& os);
   vptr asVar() const;
   };
+
+term substitute(const term&, const varsubstlist&);
+rbool substitute(const rbool& phi, const varsubstlist&);
+
+template<class T> T substitute(const T& x, vptr var, term& val) {
+  varsubstlist l(1, make_pair(var, val));
+  return substitute(x, l);
+  }
+
+extern const term nullterm;
 
 // syntactic equality of terms (not yet implemented fully!)
 inline bool eqterm(const term& a, const term& b) {
@@ -227,7 +233,7 @@ struct TermVariable {
   virtual int getValue() = 0;
   virtual Domain* getDom() = 0;
   virtual std::ostream& display (std::ostream& os) const = 0;
-  virtual term alphterm(const term& ths, vptr v1, vptr v2) const = 0;
+  virtual term subst(const term& ths, const varsubstlist& l) const = 0;
   virtual bool uses(vptr v) = 0;
   virtual vptr subFindv(tvptr) = 0;
   virtual void listFeatures(struct featurelist& f) = 0;
@@ -246,8 +252,10 @@ struct Variable : TermVariable {
   virtual std::ostream& display (std::ostream& os) const;
   int getValue() { return value; }
   Domain *getDom() { return dom; }
-  virtual term alphterm(const term& ths, vptr v1, vptr v2) const { 
-    if(this == &(*v1)) return term(v2); else return ths;
+  virtual term subst(const term& ths, const varsubstlist& l) const { 
+    for(auto& p: l)
+      if(ths.p == p.first) return p.second;
+    return ths;
     }
   virtual bool uses(vptr v) { return &*v == this; }
   virtual vptr subFindv(tvptr);
@@ -269,8 +277,8 @@ struct TermBinary : TermVariable {
     return r->displaytermbin(os, this);
     }
   int getValue(); 
-  virtual term alphterm(const term& ths, vptr v1, vptr v2) const {
-    return term(std::make_shared<TermBinary>(r, op, left.p->alphterm(left,v1,v2), right.p->alphterm(right,v1,v2)));
+  virtual term subst(const term& ths, const varsubstlist& l) const {
+    return term(std::make_shared<TermBinary>(r, op, substitute(left,l), substitute(right,l)));
     }
   virtual bool uses(vptr v) { return left.p->uses(v) || right.p->uses(v); }
   virtual vptr subFindv(tvptr);
@@ -290,8 +298,9 @@ struct TermConst : TermVariable {
     return r->displayconst(os, this);
     }
   int getValue(); 
-  virtual term alphterm(const term& ths, vptr v1, vptr v2) const {
-    return term(std::make_shared<TermConst>(r, op, v->dom));
+  virtual term subst(const term& ths, const varsubstlist& l) const {
+    return ths;
+    // return term(std::make_shared<TermConst>(r, op, v->dom));
     }
   virtual bool uses(vptr w) { return v==w; }
   virtual vptr subFindv(tvptr);
@@ -310,16 +319,14 @@ inline vptr newvar(Domain *d, const std::string& s) {
   return std::make_shared<Variable> (d, s); 
   }
 
-// alpha: substitute the variable (v1 is replaced by v2)
-vptr alpha(vptr vthis, vptr v1, vptr v2);
-term alpha(term tthis, vptr v1, vptr v2);
-
 // isused: is the variable v used in the second parameter?
-bool isused(vptr vthis, vptr v);
+bool isused(vptr v, vptr w);
 bool isused(vptr v, rbool phi);
 
 inline std::ostream& operator << (std::ostream& os, const term& a) { 
-  a.p->display(os); return os;
+  if(!a.p) os << "[null term]";
+  else a.p->display(os); 
+  return os;
   }
 
 // -- context, or the LOIS stack --
@@ -340,7 +347,7 @@ struct Context {
   // new variables here
   varlist var;
   // constructor and display
-  Context(contextptr par, rbool fi) : parent(par), phi(fi) {}
+  Context(contextptr par, rbool fi, varlist v = varlist()) : parent(par), phi(fi), var(v) {}
   };
 
 std::ostream& displaycontext(std::ostream& os, contextptr what, contextptr upto);
@@ -363,9 +370,6 @@ inline std::ostream& operator << (std::ostream& os, std::pair<contextptr, contex
 // on the 'universal' choice)
 
 rbool outenv(rbool phi = ftrue, bool universal = false, contextptr anccontext = emptycontext, contextptr nowcontext = currentcontext);
-
-// the set of extensions of anccontext-valuation to nowcontext
-lset branchset(contextptr anccontext = emptycontext, contextptr nowcontext = currentcontext);
 
 // does the given object use the new variables from 'nowcontext' to 'anccontext'
 template<class T> bool usesenv(const T& obj, contextptr anccontext = emptycontext, contextptr nowcontext = currentcontext) {
@@ -713,9 +717,6 @@ struct RelBinary : Relation {
   rbool binform(int id, const term& a, const term& b);
   
   rbool operator () (const term& a, const term& b) { return binform(ID_BINARY, a, b); }
-  rbool operator () (const elem& a, const elem& b) {
-    return binform(ID_BINARY, asa(a), asa(b));
-    }
 
   virtual bool worksWith(OutputLanguage lan) { return lan == L0; }
 
@@ -739,11 +740,9 @@ struct RelUnary : Relation {
   
   // is 'a' in the group number 'v' (0-based)?
   rbool operator () (const term& a, int v) { return binform(1<<v, a, a); }
-  rbool operator () (const elem& a, int v) { return (*this) (asa(a), v); }
 
   // are 'a' and 'b' in the same group?  
   rbool together(const term& a, const term& b) { return binform(ID_UN_EQ, a, b); }
-  rbool together(elem& a, elem& b) { return binform(ID_UN_EQ, asa(a), asa(b)); }
 
   virtual bool worksWith(OutputLanguage lan) { return lan == L0; }
   virtual std::string getName() { return "[unary " + oprel.asString() + "]"; }
@@ -785,16 +784,8 @@ struct RelTree : Relation {
     return binform(ID_ANCESTOR_OR_EQUAL, a, b); 
     }
 
-  rbool anceq (const elem& a, const elem& b) { 
-    return binform(ID_ANCESTOR_OR_EQUAL, asa(a), asa(b)); 
-    }
-  
   term lca (const term& a, const term& b) {
     return term(std::make_shared<TermBinary> (this,0,a,b));
-    }
-
-  term lca (const elem& a, const elem& b) {
-    return term(std::make_shared<TermBinary> (this,0,asa(a),asa(b)));
     }
 
   virtual std::string getName() { return "[tree " + opanceq.asString() + "]"; }
@@ -802,214 +793,72 @@ struct RelTree : Relation {
 
 // -- sets --
 
-typedef std::pair<elem, elem> elpair;
-typedef std::vector<elem> eltuple;
-
-struct elem {
-  std::shared_ptr<struct Element> p; 
-  elem(std::shared_ptr<struct Element> e) : p(e) {}
-  elem() {}
-  Element* operator -> () const { return &(*p); }
-  elem(const lset& s);
-  elem(std::shared_ptr<struct ESet> s);
-  elem(int);
-  elem(std::string);
-  elem(vptr);
-  elem(term);
-  elem(elpair);
-  elem(eltuple);
-  };
-
-extern const elem nullelem;
-
-// elem is internally a shared_ptr to Element
-
-struct Element {
-  // destructor
-  virtual ~Element() {}
-  // display on a stream
-  virtual std::ostream& display (std::ostream &os) const = 0;
-  // alpha-convert this from 'v1' to 'v2' (i.e., substitute variable)
-  virtual elem alph(vptr v1, vptr v2) const = 0;
-  // is the free variable 'v' used by this element?
-  virtual bool uses(vptr v) = 0;
-  virtual rbool operator == (Element& e) = 0;
-  virtual rbool operator != (Element& e) = 0;
-  virtual rbool operator <  (Element& e) = 0;
-  virtual rbool operator <= (Element& e) = 0;
-  };
-
-inline rbool operator == (elem x, elem y) { return (*x.p) == (*y.p); }
-inline rbool operator != (elem x, elem y) { return (*(x.p)) != (*(y.p)); }
-inline rbool operator <  (elem x, elem y) { return (*x.p) < (*y.p); }
-inline rbool operator <= (elem x, elem y) { return (*(x.p)) <= (*(y.p)); }
-inline rbool operator >  (elem x, elem y) { return (*y.p) < (*x.p); }
-inline rbool operator >= (elem x, elem y) { return (*(y.p)) <= (*(x.p)); }
-
-inline bool isused(vptr v, elem e) { return e->uses(v); }
-
-inline std::ostream& operator << (std::ostream& os, elem a) { return a->display(os); }
 
 // --- ElementOf ---
 
 // represent the type T as a subclass of Element
 
-template<class T> struct ElementOf: Element {
-  T data;
-  explicit ElementOf(T&& tmp, int) : data(tmp) {}
-  explicit ElementOf(const T& tmp, int) : data(tmp) {}
-  ElementOf(T tmp) : data(tmp) {}
-  std::ostream& display (std::ostream &os) const { return os << data; }
-  virtual elem alph(vptr v1, vptr v2) const { 
-    return elem(std::make_shared<ElementOf> (alpha(data, v1, v2)));
-    }
-  virtual bool uses(vptr v) { return isused(v, data); }
-  rbool operator == (Element& e) {
-    auto e2 = dynamic_cast<ElementOf<T>*>(&e);
-    if(!e2) return ffalse;
-    return data == e2->data;
-    }
-  rbool operator != (Element& e) {
-    auto e2 = dynamic_cast<ElementOf<T>*>(&e);
-    if(!e2) return ftrue;
-    return data != e2->data;
-    }
-  rbool operator < (Element& e) {
-    auto e2 = dynamic_cast<ElementOf<T>*>(&e);
-    if(!e2) return ffalse;
-    return data < e2->data;
-    }
-  rbool operator <= (Element& e) {
-    auto e2 = dynamic_cast<ElementOf<T>*>(&e);
-    if(!e2) return ffalse;
-    return data <= e2->data;
-    }
-  };
-
-// encapsulate T as ElementOf<T>
-
-template<class T> elem elof(const T& x) { return elem(std::make_shared<ElementOf<T>> (x)); }
-template<class T> elem elof(T&& x) { return elem(std::make_shared<ElementOf<T>> (x)); }
-
-// ElementOf<T> back to T
-template<class T> T& as(elem a) {
-  auto sa = std::dynamic_pointer_cast<ElementOf<T>> (a.p);
-  if(!sa) throw as_exception();
-  return sa->data;
-  }
-
-// is this element of type T?
-template<class T> bool is(elem a) {
-  auto sa = std::dynamic_pointer_cast<ElementOf<T>> (a.p);
-  return sa ? true : false;
-  }
-
 // a simple set (set builder expression)
 
-struct SimpleSet {
+template<class T> struct SimpleSetOf {
   varlist var; // list of variables in the context (rhs of the set builder expression)
   rbool phi; // the constraint (one is enough)
-  elem a;
-  SimpleSet() {}
-  SimpleSet(const SimpleSet& copy_from_me) = delete;
-  SimpleSet(varlist _var, rbool _phi, elem _a) : var(_var), phi(_phi), a(_a) {}
-  SimpleSet(SimpleSet&& src) {
+  T a;
+  SimpleSetOf() {}
+  SimpleSetOf(const SimpleSetOf& src) {
+    phi = src.phi; a = src.a; var = src.var;
+    }
+  SimpleSetOf(varlist _var, rbool _phi, T _a) : var(_var), phi(_phi), a(_a) {}
+  SimpleSetOf(SimpleSetOf&& src) {
     phi = src.phi; a = src.a; var = src.var;
     src.var.resize(0);
     }
   };
 
-// a set
-
-struct ESet : Element {
-  ESet() { }
-  std::vector<struct SimpleSet> elts;
-  virtual struct EIterator begin() const;
-  virtual struct EIterator end() const;
-  std::ostream& display (std::ostream &os) const;
-  virtual elem alph(vptr v1, vptr v2) const;
-  virtual void insert(elem a, contextptr ain, contextptr nowcontext = currentcontext);
-  virtual bool uses(vptr w);
-  rbool subseteq (ESet* e);
-  rbool hasmember (elem e);
-  rbool operator == (Element& e);
-  rbool operator != (Element& e) { return !((*this) == e); }
-  rbool operator <= (Element& e) {
-    auto e2 = dynamic_cast<ESet*>(&e);
-    if(!e2) return ffalse;
-    return subseteq(e2);
-    }
-  rbool operator < (Element& e) {
-    auto e2 = dynamic_cast<ESet*>(&e);
-    if(!e2) return ffalse;
-    return subseteq(e2) && !e2->subseteq(this);
-    }
-  };
-
-inline elem::elem(std::shared_ptr<struct ESet> s) : p(s) {}
-
 // iterator for ESet (very technical)
 
-struct EIterator {
-  const ESet *s;
+template<class T> struct EIteratorOf {
+  const lsetof<T> &s;
   int index;
-  elem at;
+  std::shared_ptr<T> at;
   contextptr ourcontext;
-  const elem& operator * ();
+  T& operator * ();
   void operator ++ ();
   void connectIterator();
   void disconnectIterator();
-  EIterator(const ESet *_s, int id) : s(_s), index(id) { 
-    at = nullelem; if(s) connectIterator();
+  EIteratorOf(const lsetof<T> &_s, int id) : s(_s), index(id) { 
+    connectIterator();
     }
-  EIterator(const EIterator& src) = delete;
-  EIterator(EIterator&& src) {
-    s = src.s; index = src.index; at = src.at; ourcontext = src.ourcontext;
-    src.at = nullelem;
+  EIteratorOf(const EIteratorOf<T>& src) = delete;
+  EIteratorOf(EIteratorOf<T>&& src) : s(src.s) {
+    index = src.index; at = src.at; ourcontext = src.ourcontext;
     }
-  ~EIterator() { 
+  ~EIteratorOf() { 
     disconnectIterator(); 
     }
-  bool operator != (const EIterator& other);
+  bool operator != (const EIteratorOf<T>& other);
   };
-
-EIterator begin(elem a);
-EIterator end(elem a);
 
 // create a set with the given contents
-inline std::shared_ptr<ESet> newInternalSet() { return std::make_shared<ESet> (); }
 
-lset newSet(elem x);
-lset newSet(elem x, elem y);
-lset newSet(std::initializer_list<elem> l);
+template<class T> lsetof<T> newSet(T x) {
+  lsetof<T> res; res.insert(x, currentcontext); return res;   
+  }
+
+template<class T> lsetof<T> newSet(T x, T y) {
+  lsetof<T> res; 
+  res.insert(x, currentcontext); 
+  res.insert(y, currentcontext); 
+  return res;   
+  }
+
+template<class T> lsetof<T> newSet(std::initializer_list<T> l) {
+  lsetof<T> res;
+  for(auto z: l) res.insert(z, currentcontext);
+  return res;
+  }
 
 inline bool isused(vptr v, const term& a) { return a.p->uses(v); }
-
-inline elem alpha(elem x, vptr v1, vptr v2) { return x.p->alph(v1, v2); }
-
-extern lset emptyset;
-
-bool isSet(elem a);
-
-lset asSet(elem a);
-
-// setof
-
-template<class T> struct EIteratorOf {
-  EIterator it;
-  EIteratorOf(EIterator&& i) : it(NULL, 0) {
-    it.s = i.s; it.index = i.index; it.at = i.at; 
-    it.ourcontext = i.ourcontext; i.at = nullelem;
-    }
-  EIteratorOf(const EIterator& i) = delete;
-  EIteratorOf& operator ++ () { ++it; return *this; }
-  T& operator* () { return as<T> (*it); }
-  EIteratorOf(EIteratorOf&& src) : it(NULL, 0) { 
-    it.s = src.it.s; it.index = src.it.index; it.at = src.it.at; 
-    it.ourcontext = src.it.ourcontext; src.it.at = nullelem;
-    }
-  bool operator != (const EIteratorOf<T> & x) { return it != x.it; }
-  };
 
 // negation structure: 
 // a technical construct required to enable writing the set difference as (A&&~B)
@@ -1025,100 +874,261 @@ template<class T> T operator ~ (negated<T> A) { return A.original; }
 // set/setof lvalues
 //-------------------
 
-struct lset {
-  std::shared_ptr<struct ESet> p;
+template<class T> struct lsetof {
+  typedef T element;
   contextptr ain; // environment at the time of definition
+
+  std::vector<std::shared_ptr<SimpleSetOf<T>>> elts;
+  std::ostream& display (std::ostream &os) const;
+  void insert(T a, contextptr ain, contextptr nowcontext = currentcontext);
+  bool uses(vptr w);
+  rbool subseteq (const lsetof<T>& e) const;
+  rbool hasmember (const T& e) const;
+  rbool operator == (const lsetof<T>& e) const {
+    return subseteq(e) && e.subseteq(*this);
+    }
+  rbool operator != (const lsetof<T>& e) const { return !((*this) == e); }
+  rbool operator <= (const lsetof<T>& e) const {
+    return subseteq(e);
+    }
+  rbool operator < (const lsetof<T>& e) const {
+    return subseteq(e) && !e.subseteq(*this);
+    }
   
-  ESet* operator -> () const { return &(*p); }
-  
-  lset() { p = newInternalSet(); ain = currentcontext; }
-  lset(std::shared_ptr<struct ESet> e) : p(e), ain(currentcontext) {}
-  explicit lset(elem e) : p(std::dynamic_pointer_cast<ESet>(e.p)), ain(currentcontext) { if(!p) throw as_exception(); }
+  lsetof() { ain = currentcontext; }
 
-  lset removeall();
-  lset removeallnonset();
+  lsetof<T> removeall();
+  lsetof<T> removeallnonset();
 
-  lset& operator += (elem y) { p->insert(y, ain); return *this; }
-  lset& operator |= (const lset& y) { for(elem e: y) p->insert(e, ain); return *this; }
-  lset& operator -= (elem y);
-  lset& operator &= (const lset& y);
-  lset& operator &= (negated<lset> y);
+  lsetof<T>& operator += (const T& y) { insert(y, ain); return *this; }
+  lsetof<T>& operator |= (const lsetof<T>& y) { for(const T& e: y) insert(e, ain); return *this; }
+  lsetof<T>& operator -= (const T& y);
+  lsetof<T>& operator &= (const lsetof<T>& y);
+  lsetof<T>& operator &= (const negated<lsetof<T>>& y);
 
-  struct EIterator begin() const { return p->begin(); }
-  virtual struct EIterator end() const { return p->end(); }
+  EIteratorOf<T> begin() const { return EIteratorOf<T> (*this, 0); }
+  EIteratorOf<T> end() const { return EIteratorOf<T> (*this, 2000000000); }
 
-  template<class T>
-  lset(const lsetof<T>& o) { ain = currentcontext; p = newInternalSet(); (*this) |= o.orig; }
-
-  lset& operator = (const lset& rval) {
+  lsetof<T>& operator = (const lsetof<T>& rval) {
+    if(debuglois) std::cout << ido << "assign " << rval << " ain = " << ain << " context = " << emptycontext << std::endl;
+    autoindenter i1;
     if(usesenv(rval, ain)) throw assignment_exception();
     removeall(); (*this) |= rval;
     return *this;
     }
 
-  lset(const lset &x) : ain(currentcontext) {
-    p = newInternalSet();
+  lsetof<T>(const lsetof<T> &x) : ain(currentcontext) {
+    if(debuglois) std::cout << ido << "copying " << x << " ain = " << emptycontext << std::endl;
+    autoindenter i2;
     (*this) |= x;
     }
 
-  lset(lset &&x) : ain(currentcontext) {
+  lsetof<T>(lsetof<T> &&x) : ain(currentcontext) {
     if(x.ain == currentcontext) {
-      // printf("quick move used\n");
-      p = x.p;
+      swap(elts, x.elts);
       }
     else {
-      p = newInternalSet();
       (*this) |= x;
       }
     }
     
-    rbool isEmpty() { return *this == emptyset; }
+  rbool isEmpty() { lbool any = ftrue; for(auto x: *this) any = ffalse; return any; }
   };
 
-inline elem::elem(const lset& s) : p(s.p) {}
-inline rbool operator == (const lset& x, const lset& y) { return (*x.p) == (*y.p); }
-inline rbool operator != (const lset& x, const lset& y) { return (*x.p) != (*y.p); }
-inline bool isused(vptr v, const lset& e) { return e->uses(v); }
-inline lset newSet() { return lset(); }
+template<class T> rbool isempty(lsetof<T>& what) {
+  lbool res = ftrue;
+  for(auto e: what) res = ffalse;
+  return res;
+  }
 
-inline negated<lset> operator ~ (const lset& A) { return negated<lset>(A); }
+template<class T> lsetof<T> substitute(const lsetof<T>& where, const varsubstlist& l) {
+  lsetof<T> res;
+  for(auto elt: where.elts)
+    res.elts.emplace_back(std::make_shared<SimpleSetOf<T>> (
+      elt->var,
+      substitute(elt->phi, l),
+      substitute(elt->a, l))
+      );
+  return res;
+  }
+
+template<class T> bool isused(vptr w, const lsetof<T>& where) { 
+  for(auto e: where.elts)
+    if(isused(w, e->a) || isused(w, e->phi)) 
+      return true;
+  return false;
+  }
+
 template<class T>
   negated<lsetof<T>> operator ~ (const lsetof<T>& A) { return negated<lsetof<T>> (A); }
 
-inline std::ostream& operator << (std::ostream& os, const lset& a) { return a->display(os); }
-
-template<class T> struct lsetof {
-  lset orig;
-  
-  lsetof() { }
-  lsetof(const lsetof<T>& r) : orig(r.orig) {}
-  lsetof(const lset& r) : orig(r) {}
-
-  lsetof<T> removeall() { return lsetof<T> (orig.removeall()); }
-
-  lsetof<T>& operator += (T y) { orig += elof<T>(y); return *this; }
-  lsetof<T>& operator |= (const lsetof<T>& x) { orig |= x.orig; return (*this); }
-
-  EIteratorOf<T> begin() const { return EIteratorOf<T> (orig.begin()); }
-  EIteratorOf<T> end() const { return EIteratorOf<T> (orig.end()); }
-  rbool isEmpty() { return orig == emptyset; }
-  
-  operator lset () const { return orig; }
-  };
-
-template<class T> std::ostream& operator << (std::ostream& os, const lsetof<T>& A) {
-  A.orig.p->display(os); return os;
+template<class T> std::ostream& operator << (std::ostream & os, const SimpleSetOf<T>& e) {
+  os << e.a; // os << e.a;
+  bool comma = false;
+  for(size_t i=0; i<e.var.size(); i++) {
+    if(comma) os << sym.sfecomma; else os << sym.sfepipe;
+    os << e.var[i]; os << sym.in; os << e.var[i]->dom->name;
+    comma = true;
+    }
+  if(!e.phi.isTrue()) {
+    if(comma) os << sym.sfecomma; else os << sym.sfepipe;
+    os << e.phi;
+    }
+  return os;
   }
 
-template<class T> lsetof<T> alpha(lsetof<T> A, vptr v1, vptr v2) {
-  return as<lsetof<T>>(A.orig.p->alph(v1,v2));
+template<class T> std::ostream& lsetof<T>::display (std::ostream &os) const { 
+  if(elts.size() == 0) return os << sym.emptyset;
+  os << sym.leftbrace;
+  for(size_t i=0; i<elts.size(); i++) {
+    if(i) os << sym.ssunion;
+    os << *elts[i];
+    }
+  return os << sym.rightbrace;
   }
 
-template<class T> bool isused(vptr v, lsetof<T> A) { return A.orig->uses(v); }
+template<class T> 
+std::ostream& operator << (std::ostream& os, const lsetof<T>& A) { return A.display(os); }
 
-template<class T> lsetof<T> newSetOf() { return lsetof<T> (newSet()); }
-template<class T> lsetof<T> newSetOf(T x) { return lsetof<T> (newSet(elof<T> (x))); }
-template<class T> lsetof<T> newSetOf(T x, T y) { return lsetof<T> (newSet(elof<T> (x), elof<T> (y))); }
+template<class T> T& EIteratorOf<T>::operator * () {
+  return *at;
+  }
+template<class T> void EIteratorOf<T>::operator ++ () { 
+  disconnectIterator();
+  // if(index >= 0) 
+  index++;
+  connectIterator();
+  }
+template<class T> void EIteratorOf<T>::connectIterator() {
+  if(index >= s.elts.size() || index < 0) return;
+  const SimpleSetOf<T>& sel(*s.elts[index]);
+  // add variables and alph!
+
+  if(debuglois) {
+    std::cout << ido << "connect " << sel.a << " phi=" << sel.phi;
+    for(auto v: sel.var) std::cout << " v:"<<v;
+    std::cout << " in context="<<emptycontext << std::endl;
+    }
+  autoindenter i1;
+
+  varsubstlist varpairs;
+  varlist vlist;
+
+  for(auto w: sel.var) {
+    vptr v = newvar(w->dom);
+    varpairs.emplace_back(w, term(v));
+    vlist.push_back(v);
+    }
+
+  currentcontext = ourcontext = std::make_shared<Context> (currentcontext, 
+    substitute(sel.phi, varpairs), vlist);
+  
+  // sometimes the environment is inconsistent with phi
+  if(debuglois) std::cout << ido << "got for conscheck: " << *at << std::endl << ido << "  IN " << emptycontext << std::endl;
+  int res = solver->solveEnv();
+  
+  if(debuglois) std::cout << ido << "checking consistency: " << res << std::endl;
+  
+  if(res == 2) at = std::make_shared<T> (substitute(sel.a, varpairs));
+  else ++(*this);
+
+  if(debuglois) {
+    if(at == NULL) std::cout << ido << "no result\n" << std::endl;
+    else std::cout << ido << "result: " << *at << " in context="<<emptycontext << std::endl;
+    }
+  }
+template<class T> void EIteratorOf<T>::disconnectIterator() {
+  // printf("%p: disconnect\n", this);
+  if(ourcontext) {
+    if(currentcontext != ourcontext) throw iterator_exception();
+    currentcontext = ourcontext->parent;
+    ourcontext = NULL;
+    at = NULL;
+    }
+  }
+
+template<class T> bool EIteratorOf<T>::operator != (const EIteratorOf<T>& other) {
+  if(index < 0 || index >= s.elts.size())
+    return !(other.index < 0 || other.index >= other.s.elts.size());
+  return index != other.index;
+  }
+
+template<class T> rbool lsetof<T>::subseteq (const lsetof<T>& e) const {
+  lbool a(ftrue); for(auto& x: *this) a &= e.hasmember(x); return a;
+  }
+
+template<class T> rbool lsetof<T>::hasmember(const T& e) const {
+  lbool a(ffalse); for(auto& x: *this) a |= (e == x); return a;
+  }
+
+void aggressive_simplify(varlist& selvar, rbool& selphi, contextptr& ain, std::function<bool(vptr)> isused, std::function<void(const varsubstlist&)> alpha);
+
+template<class T> void aggressive_simplify(varlist& selvar, rbool& selphi, T& a, contextptr& ain) {
+  aggressive_simplify(selvar, selphi, ain,
+    [&] (vptr v) { return isused(v,a); },
+    [&] (const varsubstlist& l) { a = substitute(a,l); }
+    );    
+  }
+
+term valueKnown(rbool& phi, vptr v, bool negated);
+rbool makequantifier(bool f, rbool& phi, varlist to_quantify);
+
+template<class T> void lsetof<T>::insert(T a, contextptr ain, contextptr nowenv) {
+
+  if(debuglois) std::cout << ido << "insert " << a << ieol << "  ENV " << emptycontext << ieol << "  AIN "<< ain << std::endl;
+  autoindenter i1;
+  
+  varlist selvar;
+  rbool selphi = ftrue;
+  
+  varlist to_quantify;
+  
+  contextptr ainlocal = nowenv;  
+
+  while(ainlocal != ain) {
+    if(!ainlocal) throw env_exception();
+    rbool aphi = ainlocal->phi;
+    selphi = selphi && aphi;
+    for(auto w: ainlocal->var) 
+      if(isused(w, selphi) || isused(w, a)) {
+        term w1 = valueKnown(selphi, w, false);
+        if(debuglois) std::cout << ido << "checking variable: " << w << std::endl;
+        
+        if(w1.p) {
+          if(debuglois) std::cout << ido << "value known to be " << w1 << std::endl;
+          selphi = substitute(selphi, w, w1), a = substitute(a, w, w1);
+          }
+        else if(isused(w, a)) {
+          if(debuglois) std::cout << ido << "value of " << w << " not known, added to selvar" << std::endl;
+          selvar.push_back(w);
+          }
+        else {
+          if(debuglois) std::cout << ido << "value of " << w << " not known, added to to_quantify" << std::endl;
+          to_quantify.push_back(w);
+          }
+        }
+    ainlocal = ainlocal->parent;
+    }
+  if(to_quantify.size()) {
+    if(debuglois) std::cout << ido << "phi (1) = " << selphi << std::endl;
+    if(debuglois) for(vptr v: to_quantify) std::cout << ido << "quantifier to add: " << v << std::endl;
+    selphi = makequantifier(false, selphi, to_quantify);
+    if(debuglois) std::cout << ido << "phi (2) = " << selphi << std::endl;
+    }
+#ifdef AGGSYM
+  aggressive_simplify(selvar, selphi, a, ain);
+#endif
+
+  if(debuglois) {
+    for(vptr v: selvar) 
+    std::cout << ido << "| selvar = " << v << std::endl;
+    std::cout << ido << "| selphi = " << selphi << std::endl;
+    std::cout << ido << "| a      = " << a << std::endl;
+    }
+
+  elts.emplace_back(std::make_shared<SimpleSetOf<T>>(selvar, selphi, a));
+  }
+
 
 // initialize everything
 

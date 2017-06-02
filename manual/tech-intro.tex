@@ -44,3 +44,10 @@ LOIS has been tested on machines with the following configurations:
 \item gcc version 4.7.3, architecture x86\_64, PLD Linux
 \end{itemize}
 
+\subsection{Changelog}
+On May 28, 2017 LOIS has been changed to use static typing by default: instead of using
+the polymorphic element type \verb|elem|, and \verb|lset| which can include elements of
+any type, the basic types is now \verb|lsetof<T>|. The type \verb|elem| (explicitly created
+with the function \verb|elof|) and \verb|lset| (defined as \verb|lsetof<elem>|) are
+available in \verb|lois-weak.h|. {\bf THE MANUAL HAS NOT BEEN UPDATED YET} except
+the automatically generated code snippets.
