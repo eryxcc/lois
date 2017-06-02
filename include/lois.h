@@ -10,6 +10,7 @@
 #include <ostream>
 #include <iostream>
 #include <memory>
+#include <functional>
 
 namespace lois {
 
