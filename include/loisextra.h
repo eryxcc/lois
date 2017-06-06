@@ -240,24 +240,24 @@ lsetof<lpair<T,U>> operator * (const lsetof<T> & x, const lsetof<U> & y) {
 //--------
 
 #define FORALL(x, set, condition) \
-  ([&]() -> rbool { lbool ret(ftrue); for(auto x: (set)) ret &= (condition); return ret; }())
+  ([&]() -> lois::rbool { lois::lbool ret(lois::ftrue); for(auto x: (set)) ret &= (condition); return ret; }())
 #define EXISTS(x, set, condition) \
-  ([&]() -> rbool { lbool ret(ffalse); for(auto x: (set)) ret |= (condition); return ret; }())
+  ([&]() -> lois::rbool { lois::lbool ret(lois::ffalse); for(auto x: (set)) ret |= (condition); return ret; }())
 #define FILTERMAP(x, set, condition, replace, T) \
-  ([&]() -> lsetof<T> { lsetof<T> S; for(auto x: (set)) If(condition) S += (replace); return S; }())
+  ([&]() -> lois::lsetof<T> { lois::lsetof<T> S; for(auto x: (set)) If(condition) S += (replace); return S; }())
 #define FILTER(x, set, condition, T) FILTERMAP(x, set, condition, x, T)
-#define MAP(x, set, replace, T) FILTERMAP(x, set, ftrue, replace, T)
+#define MAP(x, set, replace, T) FILTERMAP(x, set, lois::ftrue, replace, T)
     
 #define SETOF_1(expr, decl1, condition) \
-  ([=]() -> lset { lset S; for(auto decl1) If(condition) S += (expr); return S; }())
+  ([=]() -> lois::lset { lois::lset S; for(auto decl1) If(condition) S += (expr); return S; }())
 #define SETOF_2(expr, decl1, decl2, condition) \
-  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) If(condition) S += (expr); return S; }())
+  ([=]() -> lois::lset { lois::lset S; for(auto decl1) for(auto decl2) If(condition) S += (expr); return S; }())
 #define SETOF_3(expr, decl1, decl2, decl3, condition) \
-  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) for(auto decl3) If(condition) S += (expr); return S; }())
+  ([=]() -> lois::lset { lois::lset S; for(auto decl1) for(auto decl2) for(auto decl3) If(condition) S += (expr); return S; }())
 #define SETOF_4(expr, decl1, decl2, decl3, decl4, condition) \
-  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) for(auto decl3) for(auto decl4) If(condition) S += (expr); return S; }())
+  ([=]() -> lois::lset { lois::lset S; for(auto decl1) for(auto decl2) for(auto decl3) for(auto decl4) If(condition) S += (expr); return S; }())
 #define SETOF_5(expr, decl1, decl2, decl3, decl4, decl5, condition) \
-  ([=]() -> lset { lset S; for(auto decl1) for(auto decl2) for(auto decl3) for(auto decl4) for(auto decl5) If(condition) S += (expr); return S; }())
+  ([=]() -> lois::lset { lois::lset S; for(auto decl1) for(auto decl2) for(auto decl3) for(auto decl4) for(auto decl5) If(condition) S += (expr); return S; }())
 
 #define GET_MACRO(U,  _1,_2,_3,_4,_5, NAME,...) NAME
 #define SETOF(expr, ...) GET_MACRO(__VA_ARGS__, SETOF_5,SETOF_4, SETOF_3, SETOF_2, SETOF_1)(expr, __VA_ARGS__)
