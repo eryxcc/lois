@@ -105,7 +105,7 @@ struct SolverSMT : Solver {
 
     featurelist fl;
     phi->listFeatures(fl);
-    if(fl.domains.size() != 1) {
+    if(fl.domains.size() > 1) {
       std::cout << "SMT cannot use multiple domains yet" << std::endl;
       return 1;
       }
@@ -683,6 +683,10 @@ solveptr solverIncremental(std::string t) {
 
 solveptr solverStack(solveptr s, solveptr fallback) { 
   return std::make_shared<SolverStack> (s, fallback);
+  }
+
+solveptr solverSMT() {
+  return std::make_shared<SolverSMT> ("z3 smtquery.smt > smtquery.out"); 
   }
 
 solveptr solverSMT(std::string t) {
