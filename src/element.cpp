@@ -56,7 +56,7 @@ void aggressive_simplify(varlist& selvar, rbool& selphi, contextptr& ain, std::f
 
   simplifyWhat->clearinfo();
 
-  // cout << phi << endl;
+  // cout << "AGGRESSIVE SIMPLIFY " << phi << endl;
   
   checkid++;
   phi->initDomains();
@@ -115,5 +115,7 @@ void aggressive_simplify(varlist& selvar, rbool& selphi, contextptr& ain, std::f
     
   aggressive_simplify(selvar, selphi, ain, a_isused, a_alpha);
   }
+
+bool in_substitution;
 
 }

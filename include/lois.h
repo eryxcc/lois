@@ -875,6 +875,8 @@ template<class T> T operator ~ (negated<T> A) { return A.original; }
 // set/setof lvalues
 //-------------------
 
+extern bool in_substitution;
+
 template<class T> struct lsetof {
   typedef T element;
   contextptr ain; // environment at the time of definition
@@ -919,6 +921,11 @@ template<class T> struct lsetof {
     }
 
   lsetof<T>(const lsetof<T> &x) : ain(currentcontext) {
+    if(in_substitution) {
+      ain = x.ain;
+      elts = x.elts;
+      return;
+      }
     if(debuglois) std::cout << ido << "copying " << x << " ain = " << emptycontext << std::endl;
     autoindenter i2;
     (*this) |= x;
@@ -944,12 +951,21 @@ template<class T> rbool isempty(lsetof<T>& what) {
 
 template<class T> lsetof<T> substitute(const lsetof<T>& where, const varsubstlist& l) {
   lsetof<T> res;
-  for(auto elt: where.elts)
+
+    autoindenter i3;
+    if(debuglois) std::cout << ido << "set substitution" << std::endl;
+
+  for(auto elt: where.elts) {
+    autoindenter i4;
+    if(debuglois) std::cout << ido << "substituting in: " << elt->a << "/" << "VAR" << "/" <<elt->phi << std::endl;
     res.elts.emplace_back(std::make_shared<SimpleSetOf<T>> (
       elt->var,
       substitute(elt->phi, l),
       substitute(elt->a, l))
       );
+    }
+
+    if(debuglois) std::cout << ido << "set substitution done" << std::endl;
   return res;
   }
 
@@ -1025,7 +1041,8 @@ template<class T> void EIteratorOf<T>::connectIterator() {
     substitute(sel.phi, varpairs), vlist);
   
   // sometimes the environment is inconsistent with phi
-  if(debuglois) std::cout << ido << "got for conscheck: " << *at << std::endl << ido << "  IN " << emptycontext << std::endl;
+  if(debuglois && at) std::cout << ido << "got for conscheck: " << *at << std::endl << ido << "  IN " << emptycontext << std::endl;
+  if(debuglois && !at) std::cout << ido << "got for conscheck: " << "NULL" << std::endl << ido << "  IN " << emptycontext << std::endl;
   int res = solver->solveEnv();
   
   if(debuglois) std::cout << ido << "checking consistency: " << res << std::endl;
@@ -1038,6 +1055,8 @@ template<class T> void EIteratorOf<T>::connectIterator() {
     else std::cout << ido << "result: " << *at << " in context="<<emptycontext << std::endl;
     }
   }
+
+
 template<class T> void EIteratorOf<T>::disconnectIterator() {
   // printf("%p: disconnect\n", this);
   if(ourcontext) {
@@ -1086,7 +1105,10 @@ template<class T> void lsetof<T>::insert(T a, contextptr ain, contextptr nowenv)
   
   contextptr ainlocal = nowenv;  
 
+  contextptr nowenv2 = nowenv;  
+
   while(ainlocal != ain) {
+    nowenv2 = ainlocal;
     if(!ainlocal) throw env_exception();
     rbool aphi = ainlocal->phi;
     selphi = selphi && aphi;
@@ -1097,7 +1119,15 @@ template<class T> void lsetof<T>::insert(T a, contextptr ain, contextptr nowenv)
         
         if(w1.p) {
           if(debuglois) std::cout << ido << "value known to be " << w1 << std::endl;
-          selphi = substitute(selphi, w, w1), a = substitute(a, w, w1);
+          if(debuglois) std::cout << "sub selphi\n";
+          selphi = substitute(selphi, w, w1);
+          if(debuglois) std::cout << "selphi = " << selphi << std::endl;
+          if(debuglois) std::cout << "sub a::\n";
+          if(debuglois) std::cout << "a = " << a << std::endl;
+          in_substitution = true;
+          a = substitute(a, w, w1);
+          in_substitution = false;
+          if(debuglois) std::cout << "a = " << a << std::endl;
           }
         else if(isused(w, a)) {
           if(debuglois) std::cout << ido << "value of " << w << " not known, added to selvar" << std::endl;
@@ -1110,6 +1140,8 @@ template<class T> void lsetof<T>::insert(T a, contextptr ain, contextptr nowenv)
         }
     ainlocal = ainlocal->parent;
     }
+  
+  nowenv = nowenv2;
   if(to_quantify.size()) {
     if(debuglois) std::cout << ido << "phi (1) = " << selphi << std::endl;
     if(debuglois) for(vptr v: to_quantify) std::cout << ido << "quantifier to add: " << v << std::endl;
