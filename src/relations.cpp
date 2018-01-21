@@ -137,7 +137,7 @@ struct SubBinary : SubRelation {
     // printf("val1=%d val2=%d\n", val1, val2);
     if(val1 == val2) {
       if(lm == lmNoLoops) return id == ID_NOBINARY;
-      if(lm == lmAllLoops) return id = ID_BINARY;
+      if(lm == lmAllLoops) return id == ID_BINARY;
       }
     if(val1 > val2) {
       std::swap(val1, val2);
