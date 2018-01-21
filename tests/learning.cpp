@@ -22,17 +22,17 @@
 #define LENGTH_LIMIT 4
 
 // test on the queue language
-//#define QUEUESIZE 5
+// #define QUEUESIZE 3
 
 // test on doubleword (currently allowing only 1 = [aa], 2 = [abab])
 #define DOUBLEWORD 2
 
 // test on stack language
-// #define STACKSIZE 6
+// #define STACKSIZE 2
 
 // test on nth last letter
 // the word is in language iff the first letter equals (NTHLAST-1) last one
-// #define NTHLAST 5
+// #define NTHLAST 2
 
 // find equal letters
 // #define EQLANG
@@ -121,14 +121,14 @@ lbool wordinlanguage(word w, const myautomaton& a) {
   lbool res = true;
   int qid = 0;
   for(elem c: w) {
-    auto p = as<elpair> (c);
-    Ife(p.first == 1) { 
+    auto p = as<lpair<elem, term> > (c);
+    Ife(p.first == elof(1)) { 
       if(queu.size() == qid + QUEUESIZE) return false;
-      queu.push_back(p.second);
+      queu.push_back(elof(p.second));
       }
     else {
       if(qid == queu.size()) return false;
-      res &= (queu[qid] == p.second);
+      res &= (queu[qid] == elof(p.second));
       qid++;
       }
     }
@@ -588,16 +588,22 @@ void buildNthLast(myautomaton& target, lset& A, word w, int nth) {
       word w2 = w;
       for(int i=1; i<nth-1; i++) w2[i] = w2[i+1];
       w2[nth-1] = a;
-      target.delta += mytransition(elof(w), elof(a), elof(w2));
+      target.delta += mytransition(elof(w), a, elof(w2));
       }
     }
   else {
     for(auto a: A) {
       word w2 = concat(w, a);
-      target.delta += mytransition(elof(w), elof(a), elof(w2));
+      target.delta += mytransition(elof(w), a, elof(w2));
       buildNthLast(target, A, w2, nth);
       }
     }    
+  }
+
+template<class T> lset be_lset(const lsetof<T>& s) {
+  lset val;
+  for(auto el: s) val += elof(el);
+  return val;
   }
   
 int main() {
@@ -678,13 +684,13 @@ int main() {
 #define WHICH stacksize
   if(true) {
     int reps = 0;
-    elem etrash = 0;
-    elem epush = 1;
-    elem epop = 2;
-    target.alph = newSet(epush, epop) * A;
+    elem etrash = elof(0);
+    elem epush = elof(1);
+    elem epop = elof(2);
+    target.alph = be_lset(newSet(epush, epop) * A);
     target.Q += etrash;
-    target.I += word();
-    for(elem a: A) target.delta += mytransition(word(), elpair(epop, a), etrash);
+    target.I += elof(word());
+    for(auto a: A) target.delta += mytransition(elof(word()), elpair(epop, elof(a)), etrash);
     
     buildStackAutomaton(target, A, etrash, epush, epop, word(), STACKSIZE);
     }
@@ -694,12 +700,12 @@ int main() {
 #define WHICH queuesize
   if(true) {
     int reps = 0;
-    elem etrash = 0;
-    elem epush = 1;
-    elem epop = 2;
-    target.alph = newSet(epush, epop) * A;
+    elem etrash = elof(0);
+    elem epush = elof(1);
+    elem epop = elof(2);
+    target.alph = be_lset(newSet(epush, epop) * A);
     target.Q += etrash;
-    target.I += word();
+    target.I += elof(word());
     
     buildQueueAutomaton(target, A, etrash, epush, epop, word(), QUEUESIZE);
     }
@@ -708,8 +714,8 @@ int main() {
 #ifdef NTHLAST
 #define WHICH nthlast
   if(true) {
-    target.I += word();
-    buildNthLast(target, A, word(), NTHLAST);
+    target.I += elof(word());
+    buildNthLast(target, sigma, word(), NTHLAST);
     }
 #endif
 
@@ -742,8 +748,8 @@ int main() {
 #endif
 
   lsetof<word> allwords;
-  
-  for(auto a: sigma) for(auto b: sigma) {
+
+  for(auto a: target.alph) for(auto b: target.alph) {
     word w;
     w.push_back(a);
     w.push_back(b);
@@ -754,7 +760,7 @@ int main() {
   
   allwords = newSet<word>({});
   
-  for(auto a: sigma) for(auto b: sigma) for(auto c: sigma) for(auto d: sigma) {
+  for(auto a: target.alph) for(auto b: target.alph) for(auto c: target.alph) for(auto d: target.alph) {
     word w;
     w.push_back(a);
     w.push_back(b);
