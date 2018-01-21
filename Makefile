@@ -1,5 +1,5 @@
 CFLAGS?=-std=c++0x -O3
-CC=g++-4.6
+CC=g++
 
 all: out/tutorial.txt out/autotest.txt out/mintest.txt 
 
